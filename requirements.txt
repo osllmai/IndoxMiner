@@ -1,5 +1,9 @@
 latex2markdown==0.2.1
 loguru==0.7.2
-pandas==2.2.3
+pandas~=2.0.3
 setuptools==75.3.0
 unstructured==0.15.5
+
+utils~=1.0.2
+requests~=2.32.3
+opencv-python~=4.9.0.80

@@ -18,7 +18,7 @@ from .loader import (
 from .llms import (
     OpenAi,
     Anthropic,
-    # Ollama,
+    IndoxApi,
 )
 __all__ = [
     # Extractor related
@@ -39,7 +39,7 @@ __all__ = [
     # llms
     "OpenAi",
     "Anthropic",
-    # "Ollama",
+    "IndoxApi",
 ]
 
 # Package metadata
