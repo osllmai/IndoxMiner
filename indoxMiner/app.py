@@ -6,11 +6,19 @@ import json
 import pandas as pd
 from loguru import logger
 import re
-from .utils import  Document
+from .utils import Document
 from .llms import BaseLLM
 
 
 class OutputFormat(Enum):
+    """Supported output formats for data extraction.
+
+    Defines the available formats for structuring extracted data:
+    - JSON: JavaScript Object Notation format
+    - CSV: Comma-Separated Values format
+    - TABLE: Formatted table structure
+    - MARKDOWN: Markdown text format
+    """
     JSON = "json"
     CSV = "csv"
     TABLE = "table"
@@ -18,6 +26,13 @@ class OutputFormat(Enum):
 
 
 class FieldType(Enum):
+    """Data types supported for field extraction.
+
+    Defines the possible data types that can be extracted:
+    - Standard types: STRING, INTEGER, FLOAT, BOOLEAN, DATE
+    - Complex types: LIST
+    - Specialized types: EMAIL, PHONE, URL
+    """
     STRING = "string"
     INTEGER = "integer"
     FLOAT = "float"
@@ -31,7 +46,16 @@ class FieldType(Enum):
 
 @dataclass
 class ValidationRule:
-    """Validation rules for fields."""
+    """Validation rules for ensuring data quality in extracted fields.
+
+    Attributes:
+        min_value (float, optional): Minimum allowed numeric value
+        max_value (float, optional): Maximum allowed numeric value
+        pattern (str, optional): Regex pattern for string validation
+        allowed_values (List[Any], optional): List of valid values
+        min_length (int, optional): Minimum length for string fields
+        max_length (int, optional): Maximum length for string fields
+    """
     min_value: Optional[float] = None
     max_value: Optional[float] = None
     pattern: Optional[str] = None
@@ -40,7 +64,11 @@ class ValidationRule:
     max_length: Optional[int] = None
 
     def to_prompt_string(self) -> str:
-        """Convert rules to human-readable format."""
+        """Convert validation rules to a human-readable format.
+
+        Returns:
+            str: Semicolon-separated string of active validation rules
+        """
         rules = []
         if self.min_value is not None:
             rules.append(f"minimum value: {self.min_value}")
@@ -59,16 +87,29 @@ class ValidationRule:
 
 @dataclass
 class Field:
-    """Enhanced field definition with validation."""
+    """Field definition for data extraction with validation rules.
+
+    Attributes:
+        name (str): Field identifier
+        description (str): Human-readable field description
+        field_type (FieldType): Data type of the field
+        required (bool): Whether the field must have a value
+        rules (ValidationRule, optional): Validation rules for the field
+        array_item_type (FieldType, optional): For LIST fields, the type of items
+    """
     name: str
     description: str
     field_type: FieldType
     required: bool = True
     rules: Optional[ValidationRule] = None
-    array_item_type: Optional[FieldType] = None  # For list fields
+    array_item_type: Optional[FieldType] = None
 
     def to_prompt_string(self) -> str:
-        """Convert field definition to prompt format."""
+        """Convert field definition to prompt format.
+
+        Returns:
+            str: Human-readable field description including type and rules
+        """
         type_desc = self.field_type.value
         if self.field_type == FieldType.LIST and self.array_item_type:
             type_desc = f"list of {self.array_item_type.value}s"
@@ -83,37 +124,40 @@ class Field:
         return desc
 
 
-class LLMProvider(Protocol):
-    """Protocol defining the interface for LLM providers."""
-
-    async def generate(self, prompt: str) -> str:
-        ...
-
-
 @dataclass
 class ExtractorSchema:
-    """Enhanced schema with better validation and prompting."""
+    """Schema definition for data extraction with validation and formatting.
+
+    Attributes:
+        fields (List[Field]): List of fields to extract
+        output_format (OutputFormat): Desired output format
+        examples (List[Dict[str, Any]], optional): Example extractions
+        context (str, optional): Additional context for extraction
+    """
     fields: List[Field]
     output_format: OutputFormat = OutputFormat.JSON
     examples: Optional[List[Dict[str, Any]]] = None
     context: Optional[str] = None
 
     def to_prompt(self, text: str) -> str:
-        """Generate a detailed extraction prompt."""
-        # Build field descriptions
+        """Generate extraction prompt based on schema.
+
+        Args:
+            text (str): Source text for extraction
+
+        Returns:
+            str: Formatted prompt for LLM extraction
+        """
         fields_desc = "\n".join(f"- {field.to_prompt_string()}"
                                 for field in self.fields)
 
-        # Build context section
         context_section = f"\nContext:\n{self.context}\n" if self.context else ""
 
-        # Build examples section
         examples_section = ""
         if self.examples:
             examples_json = json.dumps(self.examples, indent=2)
             examples_section = f"\nExamples:\n{examples_json}\n"
 
-        # Build format-specific instructions
         format_instructions = {
             OutputFormat.JSON: "Format as a JSON object. Use null for missing values.",
             OutputFormat.CSV: "Format as CSV. Use empty string for missing values.",
@@ -146,48 +190,91 @@ class ExtractorSchema:
 
 @dataclass
 class ExtractionResult:
-    """Container for extraction results."""
+    """Container for single extraction result with validation.
+
+    Attributes:
+        data (Dict[str, Any]): Extracted data
+        raw_response (str): Original LLM response
+        validation_errors (List[str]): List of validation errors
+    """
     data: Dict[str, Any]
     raw_response: str
     validation_errors: List[str] = field(default_factory=list)
 
     @property
     def is_valid(self) -> bool:
+        """Check if extraction passed validation.
+
+        Returns:
+            bool: True if no validation errors, False otherwise
+        """
         return len(self.validation_errors) == 0
 
 
 @dataclass
 class ExtractionResults:
-    """Container for multiple extraction results."""
+    """Container for multiple extraction results with validation.
+
+    Attributes:
+        combined_data (List[Dict[str, Any]]): List of extracted data
+        raw_responses (List[str]): Original LLM responses
+        validation_errors (Dict[int, List[str]]): Validation errors by index
+    """
     combined_data: List[Dict[str, Any]]
     raw_responses: List[str]
     validation_errors: Dict[int, List[str]]
 
     @property
     def is_valid(self) -> bool:
+        """Check if all extractions passed validation.
+
+        Returns:
+            bool: True if no validation errors across all results
+        """
         return all(not errors for errors in self.validation_errors.values())
 
     def get_valid_results(self) -> List[Dict[str, Any]]:
-        """Return only the valid results."""
+        """Get list of results that passed validation.
+
+        Returns:
+            List[Dict[str, Any]]: Valid extraction results
+        """
         return [data for i, data in enumerate(self.combined_data)
                 if not self.validation_errors.get(i, [])]
 
 
 class Extractor:
-    """Enhanced data extractor with automatic chunk handling."""
+    """Data extractor using LLM with validation and concurrent processing.
+
+    This class handles extraction of structured data from text using a language model,
+    with support for validation, batching, and multiple input formats.
+
+    Attributes:
+        llm (BaseLLM): Language model provider
+        schema (ExtractorSchema): Extraction schema definition
+        max_concurrent (int): Maximum concurrent extraction operations
+    """
 
     def __init__(
             self,
             llm: BaseLLM,
             schema: ExtractorSchema,
-            max_concurrent: int = 3  # Limit concurrent extractions
+            max_concurrent: int = 3
     ):
         self.llm = llm
         self.schema = schema
         self.max_concurrent = max_concurrent
 
     def _validate_field(self, field: Field, value: Any) -> List[str]:
-        """Validate a single field value."""
+        """Validate a single field value against its rules.
+
+        Args:
+            field (Field): Field definition with validation rules
+            value (Any): Value to validate
+
+        Returns:
+            List[str]: List of validation error messages
+        """
         errors = []
 
         if value is None:
@@ -214,48 +301,42 @@ class Extractor:
         return errors
 
     async def _extract_chunk(self, text: str, chunk_index: int) -> Tuple[int, ExtractionResult]:
-        """Extract data from a single chunk."""
+        """Extract data from a single text chunk.
+
+        Args:
+            text (str): Text chunk to process
+            chunk_index (int): Index of the chunk
+
+        Returns:
+            Tuple[int, ExtractionResult]: Chunk index and extraction results
+        """
         try:
             prompt = self.schema.to_prompt(text)
-            print(prompt)
             response = await self.llm.generate(prompt)
             if self.schema.output_format == OutputFormat.JSON:
                 def clean_json_response(response_text: str) -> str:
-                    """Clean JSON response by removing comments and fixing common issues."""
-                    # Remove markdown code blocks
                     response_text = re.sub(r'```json\s*|\s*```', '', response_text.strip())
-
-                    # Process line by line
                     lines = []
                     for line in response_text.split('\n'):
-                        # Remove inline comments
                         line = re.sub(r'\s*//.*$', '', line.rstrip())
-                        if line:  # Only add non-empty lines
+                        if line:
                             lines.append(line)
-
                     return '\n'.join(lines)
 
                 try:
-                    # Clean and parse the response
                     cleaned_response = clean_json_response(response)
                     logger.debug(f"Cleaned JSON response: {cleaned_response}")
 
                     try:
                         data = json.loads(cleaned_response)
                     except json.JSONDecodeError as parse_error:
-                        # If parsing fails, try to fix common JSON issues
                         fixed_json = cleaned_response
-                        # Remove trailing commas before closing brackets
                         fixed_json = re.sub(r',(\s*[}\]])', r'\1', fixed_json)
-                        # Add missing commas between objects in array
                         fixed_json = re.sub(r'}\s*{', '},{', fixed_json)
                         data = json.loads(fixed_json)
 
-                    # If we got a list, convert it to a dictionary with nested items
                     if isinstance(data, list):
-                        data = {
-                            "items": data
-                        }
+                        data = {"items": data}
 
                 except json.JSONDecodeError as e:
                     logger.error(f"JSON parsing error: {e}\nCleaned Response: {cleaned_response}")
@@ -267,7 +348,6 @@ class Extractor:
                     validation_errors=["Non-JSON formats are returned as raw text"]
                 )
 
-            # Validate all items if it's a list result
             validation_errors = []
             if "items" in data:
                 for i, item in enumerate(data["items"]):
@@ -277,7 +357,6 @@ class Extractor:
                         if errors:
                             validation_errors.extend([f"Item {i + 1}: {error}" for error in errors])
             else:
-                # Original validation for single object
                 for field in self.schema.fields:
                     value = data.get(field.name)
                     errors = self._validate_field(field, value)
@@ -298,36 +377,39 @@ class Extractor:
             )
 
     async def extract_single(self, text: str) -> ExtractionResult:
-        """Extract from a single piece of text."""
+        """Extract data from a single text.
+
+        Args:
+            text (str): Text to process
+
+        Returns:
+            ExtractionResult: Extraction results with validation
+        """
         _, result = await self._extract_chunk(text, 0)
         return result
 
     async def extract_multiple(self, documents: List[Document]) -> ExtractionResults:
-        """
-        Extract data from multiple documents/chunks concurrently.
+        """Extract data from multiple documents concurrently.
 
         Args:
-            documents: List of Document objects from the DocumentProcessor
+            documents (List[Document]): List of documents to process
 
         Returns:
-            ExtractionResults containing combined data and validation information
+            ExtractionResults: Combined extraction results with validation
         """
-        # Create semaphore to limit concurrent extractions
         semaphore = asyncio.Semaphore(self.max_concurrent)
 
         async def extract_with_semaphore(text: str, index: int) -> Tuple[int, ExtractionResult]:
             async with semaphore:
                 return await self._extract_chunk(text, index)
 
-        # Process all chunks concurrently with rate limiting
         tasks = [
             extract_with_semaphore(doc.page_content, i)
             for i, doc in enumerate(documents)
         ]
 
-        # Gather results while maintaining order
         chunk_results = await asyncio.gather(*tasks)
-        chunk_results.sort(key=lambda x: x[0])  # Sort by chunk index
+        chunk_results.sort(key=lambda x: x[0])
 
         # Combine results
         combined_results = ExtractionResults(

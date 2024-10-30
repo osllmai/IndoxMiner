@@ -12,24 +12,51 @@ from .ocr_processor import OCRProcessor
 
 
 def import_unstructured_partition(content_type):
-    # Import appropriate partition function from the `unstructured` library
+    """
+    Dynamically imports the appropriate partition function from the unstructured library.
+
+    Args:
+        content_type (str): The type of content to process (e.g., 'pdf', 'docx')
+
+    Returns:
+        callable: The partition function for the specified content type
+    """
     module_name = f"unstructured.partition.{content_type}"
     module = importlib.import_module(module_name)
     partition_function_name = f"partition_{content_type}"
-    prt = getattr(module, partition_function_name)
-    return prt
+    return getattr(module, partition_function_name)
 
 
 @dataclass
 class Document:
-    """Document class with page content and metadata."""
+    """
+    A dataclass representing a document with its content and metadata.
+
+    Attributes:
+        page_content (str): The textual content of the document page
+        metadata (dict): Associated metadata like filename, page number, etc.
+    """
     page_content: str
     metadata: dict
 
 
 @dataclass
 class ProcessingConfig:
-    """Configuration for document processing."""
+    """
+    Configuration settings for document processing.
+
+    Attributes:
+        chunk_size (int): Maximum size of text chunks (default: 500)
+        hi_res_pdf (bool): Whether to use high-resolution PDF processing (default: True)
+        infer_tables (bool): Whether to detect and process tables (default: False)
+        custom_splitter (callable): Custom function for splitting text (default: None)
+        max_workers (int): Maximum number of concurrent processing threads (default: 4)
+        remove_headers (bool): Whether to remove header elements (default: False)
+        remove_references (bool): Whether to remove reference sections (default: False)
+        filter_empty_elements (bool): Whether to remove empty elements (default: True)
+        ocr_for_images (bool): Whether to perform OCR on images (default: False)
+        ocr_model (str): OCR model to use ('tesseract' or 'paddle') (default: 'tesseract')
+    """
     chunk_size: int = 500
     hi_res_pdf: bool = True
     infer_tables: bool = False
@@ -39,11 +66,13 @@ class ProcessingConfig:
     remove_references: bool = False
     filter_empty_elements: bool = True
     ocr_for_images: bool = False
-    ocr_model: str = 'tesseract'  # 'tesseract' or 'paddle'
+    ocr_model: str = 'tesseract'
 
 
 class DocumentType(Enum):
-    """Document types supported by the processor."""
+    """
+    Enumeration of supported document types with their corresponding file extensions.
+    """
     BMP = "bmp"
     CSV = "csv"
     DOC = "doc"
@@ -74,13 +103,22 @@ class DocumentType(Enum):
 
     @classmethod
     def from_file(cls, file_path: str) -> "DocumentType":
-        """Determine document type from file path."""
+        """
+        Determines the document type from a file path or URL.
+
+        Args:
+            file_path (str): Path or URL to the document
+
+        Returns:
+            DocumentType: The determined document type
+
+        Raises:
+            ValueError: If the file type is not supported
+        """
         if file_path.lower().startswith(("http://", "https://", "www.")):
             return cls.HTML
 
         extension = Path(file_path).suffix.lower().lstrip('.')
-
-        # Handle jpg/jpeg special case
         if extension == "jpg":
             extension = "jpeg"
 
@@ -91,52 +129,83 @@ class DocumentType(Enum):
 
 
 class DocumentProcessor:
+    """
+    A processor for extracting and structuring content from various document types.
+
+    This class handles the extraction of text and metadata from different document formats,
+    including PDFs, Office documents, images, and web content. It supports concurrent
+    processing, content chunking, and various filtering options.
+
+    Attributes:
+        sources (List[str]): List of file paths or URLs to process
+        doc_types (Dict[str, DocumentType]): Mapping of sources to their document types
+        ocr_processor (Optional[OCRProcessor]): Processor for optical character recognition
+    """
+
     def __init__(self, sources: Union[str, Path, List[Union[str, Path]]]):
+        """
+        Initialize the DocumentProcessor with one or more sources.
+
+        Args:
+            sources: Single source or list of sources to process
+        """
         self.sources = [str(sources)] if isinstance(sources, (str, Path)) else [str(s) for s in sources]
         self.doc_types = {source: DocumentType.from_file(source) for source in self.sources}
         self.ocr_processor = None
 
     def _init_ocr_processor(self):
-        """Initialize OCR processor if needed"""
+        """Initialize OCR processor if OCR processing is enabled."""
         if self.config.ocr_for_images and not self.ocr_processor:
             self.ocr_processor = OCRProcessor(model=self.config.ocr_model)
 
     def _create_element_from_ocr(self, text: str, file_path: str) -> List[Element]:
-        """Create a proper Element object from OCR text"""
+        """
+        Create Element objects from OCR-extracted text.
+
+        Args:
+            text (str): Extracted text from OCR
+            file_path (str): Path to the processed file
+
+        Returns:
+            List[Element]: List containing the created Element object
+        """
         from unstructured.documents.elements import Text
         import datetime
 
-        # Create metadata
         metadata = {
             'filename': Path(file_path).name,
             'file_directory': str(Path(file_path).parent),
             'filetype': self._get_filetype(file_path),
             'page_number': 1,
-            'text_as_html': text,  # Include the text as HTML
+            'text_as_html': text,
             'last_modified': datetime.datetime.now().isoformat(),
         }
 
-        # Create the element with proper metadata
         element = Text(text=text)
         element.metadata = metadata
         return [element]
 
     def _filter_elements(self, elements: List[Element]) -> List[Element]:
-        """Filter elements based on configuration."""
+        """
+        Filter elements based on configuration settings.
+
+        Args:
+            elements (List[Element]): List of elements to filter
+
+        Returns:
+            List[Element]: Filtered list of elements
+        """
         if not elements:
             return elements
 
         filtered = elements
 
-        # Filter empty elements if configured
         if self.config.filter_empty_elements:
             filtered = [el for el in filtered if hasattr(el, 'text') and el.text and el.text.strip()]
 
-        # Remove headers if configured
         if self.config.remove_headers:
             filtered = [el for el in filtered if getattr(el, 'category', '') != "Header"]
 
-        # Remove references section if configured
         if self.config.remove_references:
             try:
                 reference_titles = [
@@ -152,97 +221,111 @@ class DocumentProcessor:
         return filtered
 
     def _get_elements(self, file_path: str) -> List[Element]:
-        """Get elements from the document using appropriate partition function."""
+        """
+        Extract elements from a document using appropriate partition function.
+
+        Args:
+            file_path (str): Path to the document to process
+
+        Returns:
+            List[Element]: Extracted elements from the document
+        """
         try:
-            # Handle image files with OCR if configured
             if (file_path.lower().endswith((".png", ".jpg", ".jpeg", ".tiff", ".bmp", ".heic")) and
                     self.config.ocr_for_images):
                 text = self.ocr_processor.extract_text(file_path)
                 return self._create_element_from_ocr(text, file_path)
 
-            # Handle PDF files
             elif file_path.lower().endswith(".pdf"):
                 from unstructured.partition.pdf import partition_pdf
-                elements = partition_pdf(
+                return partition_pdf(
                     filename=file_path,
                     strategy="hi_res" if self.config.hi_res_pdf else "fast",
                     infer_table_structure=self.config.infer_tables,
                 )
-                return elements
 
-            # Handle Excel files
             elif file_path.lower().endswith((".xlsx", ".xls")):
                 from unstructured.partition.xlsx import partition_xlsx
                 elements = partition_xlsx(filename=file_path)
                 return [el for el in elements if getattr(el.metadata, 'text_as_html', None) is not None]
 
-            # Handle HTML and web content
             elif file_path.lower().startswith(("www", "http")) or file_path.lower().endswith(".html"):
                 from unstructured.partition.html import partition_html
                 url = file_path if urlparse(file_path).scheme else f"https://{file_path}"
                 return partition_html(url=url)
 
-
-            # Handle image files
             elif file_path.lower().endswith((".png", ".jpg", ".jpeg", ".tiff", ".bmp", ".heic")):
                 from unstructured.partition.image import partition_image
                 return partition_image(filename=file_path)
 
-            # Handle email files
             elif file_path.lower().endswith((".eml", ".msg")):
                 from unstructured.partition.email import partition_email
                 return partition_email(filename=file_path)
 
-            # Handle common office documents
             elif file_path.lower().endswith((".docx", ".doc", ".pptx", ".ppt")):
                 content_type = "docx" if file_path.lower().endswith((".docx", ".doc")) else "pptx"
                 partition_func = import_unstructured_partition(content_type)
                 return partition_func(filename=file_path)
 
-            # Handle all other supported formats
             else:
                 doc_type = file_path.lower().split(".")[-1]
-                module_name = f"unstructured.partition.{doc_type}"
-                try:
-                    module = importlib.import_module(module_name)
-                    partition_func = getattr(module, f"partition_{doc_type}")
-                    return partition_func(filename=file_path)
-                except (ImportError, AttributeError):
-                    print(f"Unsupported file type: {doc_type}")
-                    return []
+                partition_func = import_unstructured_partition(doc_type)
+                return partition_func(filename=file_path)
 
         except Exception as e:
             print(f"Error processing {file_path}: {e}")
             return []
 
     def _combine_elements_by_page(self, elements: List[Element]) -> List[Document]:
-        """Combine all elements on the same page into a single document."""
+        """
+        Combine elements on the same page into single documents.
+
+        Args:
+            elements (List[Element]): Elements to combine
+
+        Returns:
+            List[Document]: List of combined page documents
+        """
         documents = []
 
-        # Group elements by page number
         def get_page_number(element):
             return getattr(element.metadata, 'page_number', 1)
 
-        # Sort elements by page number
         sorted_elements = sorted(elements, key=get_page_number)
 
-        # Group elements by page
         for page_num, page_elements in groupby(sorted_elements, key=get_page_number):
-            # Combine all text from elements on this page
             page_content = " ".join(el.text for el in page_elements if hasattr(el, 'text') and el.text)
             page_content = page_content.replace("\n", " ").strip()
 
-            if page_content:  # Only create document if there's content
+            if page_content:
                 documents.append(page_content)
 
         return documents
 
     def _should_chunk_content(self, content: str, chunk_size: int) -> bool:
-        """Determine if content should be chunked based on size."""
+        """
+        Determine if content needs to be chunked based on size.
+
+        Args:
+            content (str): Content to evaluate
+            chunk_size (int): Maximum chunk size
+
+        Returns:
+            bool: True if content should be chunked
+        """
         return len(content.split()) > chunk_size
 
     def _chunk_content(self, content: str, chunk_size: int) -> List[str]:
-        """Chunk content into smaller pieces."""
+        """
+        Split content into smaller chunks.
+
+        Args:
+            content (str): Content to chunk
+            chunk_size (int): Maximum size of each chunk
+
+        Returns:
+            List[str]: List of content chunks
+        """
         if self.config.custom_splitter:
             return self.config.custom_splitter(text=content, max_tokens=chunk_size)
 
@@ -253,7 +336,7 @@ class DocumentProcessor:
 
         for word in words:
             if current_count + len(word.split()) > chunk_size:
-                if current_chunk:  # Only append if there's content
+                if current_chunk:
                     chunks.append(" ".join(current_chunk))
                 current_chunk = [word]
                 current_count = len(word.split())
@@ -261,19 +344,26 @@ class DocumentProcessor:
                 current_chunk.append(word)
                 current_count += len(word.split())
 
-        if current_chunk:  # Add the last chunk if it exists
+        if current_chunk:
             chunks.append(" ".join(current_chunk))
 
         return chunks
 
     def _process_elements_to_document(self, elements: List[Element], source: str) -> List[Document]:
-        """Convert elements to Document objects with combined page content."""
-        # First combine elements by page
+        """
+        Convert elements to Document objects with appropriate metadata.
+
+        Args:
+            elements (List[Element]): Elements to process
+            source (str): Source file path
+
+        Returns:
+            List[Document]: Processed document objects
+        """
         page_contents = self._combine_elements_by_page(elements)
         documents = []
 
         for idx, content in enumerate(page_contents, 1):
-            # Check if content needs chunking
             if self._should_chunk_content(content, self.config.chunk_size):
                 chunks = self._chunk_content(content, self.config.chunk_size)
                 for chunk_idx, chunk in enumerate(chunks, 1):
