@@ -19,6 +19,8 @@ from .llms import (
     OpenAi,
     Anthropic,
     IndoxApi,
+    AsyncIndoxApi,
+    AsyncOpenAi
 )
 __all__ = [
     # Extractor related
@@ -40,6 +42,8 @@ __all__ = [
     "OpenAi",
     "Anthropic",
     "IndoxApi",
+    "AsyncIndoxApi",
+    "AsyncOpenAi"
 ]
 
 # Package metadata
