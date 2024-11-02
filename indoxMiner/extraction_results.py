@@ -30,11 +30,11 @@ class ExtractionResults:
     """Container for multiple extraction results with validation.
 
     Attributes:
-        combined_data (List[Dict[str, Any]]): List of extracted data
+        data (List[Dict[str, Any]]): List of extracted data
         raw_responses (List[str]): Original LLM responses
         validation_errors (Dict[int, List[str]]): Validation errors by index
     """
-    combined_data: List[Dict[str, Any]]
+    data: List[Dict[str, Any]]
     raw_responses: List[str]
     validation_errors: Dict[int, List[str]]
 
@@ -53,5 +53,7 @@ class ExtractionResults:
         Returns:
             List[Dict[str, Any]]: Valid extraction results
         """
-        return [data for i, data in enumerate(self.combined_data)
+        return [data for i, data in enumerate(self.data)
                 if not self.validation_errors.get(i, [])]
+
+

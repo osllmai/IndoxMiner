@@ -1,11 +1,11 @@
 # __init__.py
 
 from .extractor import Extractor
-from .extractor_schema import ExtractorSchema, Schema
+from .schema import ExtractorSchema, Schema, OutputFormat
 from .extraction_results import ExtractionResult, ExtractionResults
-from .schema import Field, ValidationRule, OutputFormat, FieldType
+from .fields import Field, ValidationRule, FieldType
 
-from .loader import DocumentProcessor, ProcessingConfig, DocumentType, Document
+from .loader import DocumentProcessor, ProcessingConfig
 
 from .llms import OpenAi, Anthropic, IndoxApi, AsyncIndoxApi, AsyncOpenAi
 
@@ -24,8 +24,6 @@ __all__ = [
     # Document processing related
     "DocumentProcessor",
     "ProcessingConfig",
-    "DocumentType",
-    "Document",
 
     # llms
     "OpenAi",

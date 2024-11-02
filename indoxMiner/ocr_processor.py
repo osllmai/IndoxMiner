@@ -1,6 +1,7 @@
 import cv2
 import pandas as pd
 
+
 class OCRProcessor:
     def __init__(self, model: str = 'tesseract'):
         self.model = model.lower()
@@ -12,7 +13,7 @@ class OCRProcessor:
                 self.ocr = PaddleOCR(lang='en')
             except ImportError:
                 raise ImportError("Please install paddleocr package to use PaddleOCR")
-        
+
         elif self.model == 'easyocr':
             try:
                 import easyocr

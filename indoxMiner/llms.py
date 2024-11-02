@@ -324,3 +324,85 @@ class IndoxApi(BaseLLM):
         else:
             logger.error(f"Error From Indox API: {response.status_code}, {response.text}")
             raise Exception(f"Error From Indox API: {response.status_code}, {response.text}")
+        
+        
+
+class AsyncVLLM(BaseLLM):
+    """Asynchronous vLLM provider with enhanced error handling."""
+
+    def __init__(
+            self,
+            api_key: str = None,  # Only if your vLLM setup requires auth
+            model: str = "vllm-default",
+            temperature: float = 0.0,
+            max_tokens: int = 2000,
+            base_url: str = "http://localhost:8000/v1"
+    ):
+        import aiohttp
+        self.api_key = api_key
+        self.model = model
+        self.temperature = temperature
+        self.max_tokens = max_tokens
+        self.base_url = base_url
+
+    async def generate(self, prompt: str) -> str:
+        headers = {"Authorization": f"Bearer {self.api_key}"} if self.api_key else {}
+        payload = {
+            "model": self.model,
+            "prompt": prompt,
+            "temperature": self.temperature,
+            "max_tokens": self.max_tokens,
+        }
+
+        async with aiohttp.ClientSession() as session:
+            try:
+                async with session.post(f"{self.base_url}/completions", json=payload, headers=headers) as response:
+                    if response.status == 200:
+                        data = await response.json()
+                        return data["choices"][0]["text"]
+                    else:
+                        logger.error(f"vLLM generation failed with status {response.status}")
+                        raise Exception(f"vLLM generation failed with status {response.status}")
+            except Exception as e:
+                logger.error(f"vLLM generation failed: {e}")
+                raise
+
+
+class VLLM(BaseLLM):
+    """Synchronous vLLM provider with enhanced error handling."""
+
+    def __init__(
+            self,
+            api_key: str = None,  # Only if your vLLM setup requires auth
+            model: str = "vllm-default",
+            temperature: float = 0.0,
+            max_tokens: int = 2000,
+            base_url: str = "http://localhost:8000/v1"
+    ):
+        import requests
+        self.api_key = api_key
+        self.model = model
+        self.temperature = temperature
+        self.max_tokens = max_tokens
+        self.base_url = base_url
+
+    def generate(self, prompt: str) -> str:
+        headers = {"Authorization": f"Bearer {self.api_key}"} if self.api_key else {}
+        payload = {
+            "model": self.model,
+            "prompt": prompt,
+            "temperature": self.temperature,
+            "max_tokens": self.max_tokens,
+        }
+
+        try:
+            response = requests.post(f"{self.base_url}/completions", json=payload, headers=headers)
+            if response.status_code == 200:
+                data = response.json()
+                return data["choices"][0]["text"]
+            else:
+                logger.error(f"vLLM generation failed with status {response.status_code}")
+                raise Exception(f"vLLM generation failed with status {response.status_code}")
+        except Exception as e:
+            logger.error(f"vLLM generation failed: {e}")
+            raise

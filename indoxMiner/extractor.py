@@ -1,14 +1,16 @@
 import asyncio
-from typing import List, Dict, Any, Union, Tuple
+from typing import List, Dict, Any, Union, Tuple, Optional
 from loguru import logger
 import re
 import pandas as pd
-from .schema import Field, FieldType
-from .extractor_schema import ExtractorSchema
-from .extraction_results import ExtractionResult, ExtractionResults
-from .utils import Document
-from .llms import BaseLLM
 import json
+
+from .loader import Document
+from .schema import Field, FieldType, OutputFormat
+from .schema import ExtractorSchema
+from .extraction_results import ExtractionResult, ExtractionResults
+from .llms import BaseLLM
+
 
 class Extractor:
     """Data extractor using LLM with validation and concurrent processing.
@@ -66,20 +68,21 @@ class Extractor:
                 errors.append(f"{field.name} exceeds maximum length {rules.max_length}")
 
         return errors
-
+    
     async def _extract_chunk(self, text: str, chunk_index: int) -> Tuple[int, ExtractionResult]:
         """Extract data from a single text chunk.
-
+        
         Args:
             text (str): Text chunk to process
-            chunk_index (int): Index of the chunk
-
+            chunk_index (int): Index of the chunk being processed
+            
         Returns:
             Tuple[int, ExtractionResult]: Chunk index and extraction results
         """
         try:
             prompt = self.schema.to_prompt(text)
             response = await self.llm.generate(prompt)
+            
             if self.schema.output_format == OutputFormat.JSON:
                 def clean_json_response(response_text: str) -> str:
                     response_text = re.sub(r'```json\s*|\s*```', '', response_text.strip())
@@ -102,12 +105,62 @@ class Extractor:
                         fixed_json = re.sub(r'}\s*{', '},{', fixed_json)
                         data = json.loads(fixed_json)
 
+                    # Handle different data structures
                     if isinstance(data, list):
+                        # If data is a list, wrap it in an items object
                         data = {"items": data}
+                    elif isinstance(data, dict):
+                        if not any(isinstance(v, list) for v in data.values()):
+                            # If it's a flat dictionary with no lists, treat as single item
+                            data = {"items": [data]}
+                        else:
+                            # Look for array fields that might contain line items
+                            items = []
+                            common_fields = {}
+                            
+                            for key, value in data.items():
+                                if isinstance(value, list) and all(isinstance(item, dict) for item in value):
+                                    items.extend(value)
+                                elif not isinstance(value, (list, dict)):
+                                    common_fields[key] = value
+                            
+                            if items:
+                                # Combine common fields with each item
+                                data = {
+                                    "items": [
+                                        {**common_fields, **item}
+                                        for item in items
+                                    ]
+                                }
+                            else:
+                                # No lists found, treat as single item
+                                data = {"items": [data]}
+
+                    validation_errors = []
+                    
+                    # Validate each item
+                    for i, item in enumerate(data["items"]):
+                        item_errors = []
+                        for field in self.schema.fields:
+                            value = item.get(field.name)
+                            errors = self._validate_field(field, value)
+                            if errors:
+                                item_errors.extend([f"Item {i + 1}: {error}" for error in errors])
+                        validation_errors.extend(item_errors)
+
+                    return chunk_index, ExtractionResult(
+                        data=data,
+                        raw_response=response,
+                        validation_errors=validation_errors
+                    )
 
                 except json.JSONDecodeError as e:
                     logger.error(f"JSON parsing error: {e}\nCleaned Response: {cleaned_response}")
-                    raise ValueError(f"Could not parse JSON from response: {e}")
+                    return chunk_index, ExtractionResult(
+                        data={},
+                        raw_response=response,
+                        validation_errors=[f"JSON parsing error: {str(e)}"]
+                    )
             else:
                 return chunk_index, ExtractionResult(
                     data={},
@@ -115,34 +168,15 @@ class Extractor:
                     validation_errors=["Non-JSON formats are returned as raw text"]
                 )
 
-            validation_errors = []
-            if "items" in data:
-                for i, item in enumerate(data["items"]):
-                    for field in self.schema.fields:
-                        value = item.get(field.name)
-                        errors = self._validate_field(field, value)
-                        if errors:
-                            validation_errors.extend([f"Item {i + 1}: {error}" for error in errors])
-            else:
-                for field in self.schema.fields:
-                    value = data.get(field.name)
-                    errors = self._validate_field(field, value)
-                    validation_errors.extend(errors)
-
-            return chunk_index, ExtractionResult(
-                data=data,
-                raw_response=response,
-                validation_errors=validation_errors
-            )
-
         except Exception as e:
             logger.error(f"Extraction failed for chunk {chunk_index}: {e}")
             return chunk_index, ExtractionResult(
                 data={},
                 raw_response=str(e),
-                validation_errors=[str(e)]
+                validation_errors=[f"Extraction error: {str(e)}"]
             )
-
+        
+        
     async def extract_single(self, text: str) -> ExtractionResult:
         """Extract data from a single text.
 
@@ -154,6 +188,8 @@ class Extractor:
         """
         _, result = await self._extract_chunk(text, 0)
         return result
+    
+    
 
     async def extract_multiple(self, documents: List[Document]) -> ExtractionResults:
         """Extract data from multiple documents concurrently.
@@ -180,13 +216,13 @@ class Extractor:
 
         # Combine results
         combined_results = ExtractionResults(
-            combined_data=[],
+            data=[],
             raw_responses=[],
             validation_errors={}
         )
 
         for chunk_index, result in chunk_results:
-            combined_results.combined_data.append(result.data)
+            combined_results.data.append(result.data)
             combined_results.raw_responses.append(result.raw_response)
             if result.validation_errors:
                 combined_results.validation_errors[chunk_index] = result.validation_errors
@@ -237,17 +273,17 @@ class Extractor:
                 else:
                     df = pd.DataFrame([result.data])
             elif isinstance(result, ExtractionResults):
-                if any('items' in res for res in result.combined_data):
+                if any('items' in res for res in result.data):
                     # Flatten items from all results
                     items = []
-                    for res in result.combined_data:
+                    for res in result.data:
                         if 'items' in res:
                             items.extend(res['items'])
                         else:
                             items.append(res)
                     df = pd.DataFrame(items)
                 else:
-                    df = pd.DataFrame(result.combined_data)
+                    df = pd.DataFrame(result.data)
             else:
                 raise ValueError("Invalid result type")
 
@@ -271,3 +307,4 @@ class Extractor:
         except Exception as e:
             logger.error(f"Failed to convert to DataFrame: {e}")
             return None
+
