@@ -1,32 +1,21 @@
-from .app import (
-    Extractor,
-    ExtractorSchema,
-    ExtractionResult,
-    Field,
-    ValidationRule,
-    OutputFormat,
-    FieldType
-)
+# __init__.py
 
-from .loader import (
-    DocumentProcessor,
-    ProcessingConfig,
-    DocumentType,
-    Document
-)
+from .extractor import Extractor
+from .extractor_schema import ExtractorSchema, Schema
+from .extraction_results import ExtractionResult, ExtractionResults
+from .schema import Field, ValidationRule, OutputFormat, FieldType
 
-from .llms import (
-    OpenAi,
-    Anthropic,
-    IndoxApi,
-    AsyncIndoxApi,
-    AsyncOpenAi
-)
+from .loader import DocumentProcessor, ProcessingConfig, DocumentType, Document
+
+from .llms import OpenAi, Anthropic, IndoxApi, AsyncIndoxApi, AsyncOpenAi
+
 __all__ = [
-    # Extractor related
+    # Extractor and schema related
     "Extractor",
     "ExtractorSchema",
+    "Schema",  # For accessing predefined schemas like Passport, Invoice, etc.
     "ExtractionResult",
+    "ExtractionResults",
     "Field",
     "ValidationRule",
     "OutputFormat",
