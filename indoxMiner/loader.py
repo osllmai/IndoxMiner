@@ -256,7 +256,7 @@ class DocumentProcessor:
 
             elif file_path.lower().endswith((".png", ".jpg", ".jpeg", ".tiff", ".bmp", ".heic")):
                 from unstructured.partition.image import partition_image
-                return partition_image(filename=file_path)
+                return partition_image(filename=file_path,strategy="auto")
 
             elif file_path.lower().endswith((".eml", ".msg")):
                 from unstructured.partition.email import partition_email
