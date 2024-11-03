@@ -1,7 +1,6 @@
 import cv2
 import pandas as pd
 
-
 class OCRProcessor:
     def __init__(self, model: str = 'tesseract'):
         self.model = model.lower()
@@ -48,12 +47,12 @@ class OCRProcessor:
         dilated_image = cv2.dilate(binary_image, kernel, iterations=1)
         return dilated_image
 
-    def extract_text_with_easyocr(self, image_path: str) -> pd.DataFrame:
+    def extract_text_with_easyocr(self, image_path: str) -> str:
         processed_image = self.preprocess_image_for_easyocr(image_path)
         results = self.ocr.readtext(processed_image, text_threshold=0.6, low_text=0.3)
-        text_data = [{"Detected Text": text, "Confidence": confidence} for (_, text, confidence) in results]
-        df = pd.DataFrame(text_data)
-        return df
+        text_data = [text for (_, text, confidence) in results]
+        # Join detected text lines into a single string
+        return "\n".join(text_data)
 
     def extract_text_with_paddle(self, image_path: str) -> str:
         result = self.ocr.ocr(image_path, rec=True)
