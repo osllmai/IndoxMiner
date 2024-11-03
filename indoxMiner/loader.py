@@ -4,7 +4,7 @@ import importlib
 from dataclasses import dataclass
 from enum import Enum
 from urllib.parse import urlparse
-from unstructured.partition.common import Element
+from unstructured.documents.elements import Element
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from itertools import groupby
 
