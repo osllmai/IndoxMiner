@@ -1,7 +1,3 @@
-Here’s a revised version of your document, incorporating elements from your demo code while maintaining the original structure and intent. This revision emphasizes the key features of IndoxMiner while integrating specifics from your passport extraction demo.
-
----
-
 # IndoxMiner: Extracting Structured Data from Images
 
 IndoxMiner provides a powerful and flexible way to extract structured data from unstructured text within images. Using OCR (Optical Character Recognition) to convert image content to text and LLMs (Large Language Models) to interpret and extract specific fields, IndoxMiner simplifies data extraction from images like invoices, receipts, ID cards, and more.
