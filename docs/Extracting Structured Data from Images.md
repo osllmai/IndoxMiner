@@ -1,15 +1,19 @@
+Here’s a revised version of your document, incorporating elements from your demo code while maintaining the original structure and intent. This revision emphasizes the key features of IndoxMiner while integrating specifics from your passport extraction demo.
+
+---
+
 # IndoxMiner: Extracting Structured Data from Images
 
-IndoxMiner provides a powerful and flexible way to extract structured data from unstructured text within images. Using OCR (Optical Character Recognition) to convert image content to text, and LLMs (Large Language Models) to interpret and extract specific fields, IndoxMiner simplifies data extraction from images like invoices, receipts, ID cards, and more.
+IndoxMiner provides a powerful and flexible way to extract structured data from unstructured text within images. Using OCR (Optical Character Recognition) to convert image content to text and LLMs (Large Language Models) to interpret and extract specific fields, IndoxMiner simplifies data extraction from images like invoices, receipts, ID cards, and more.
 
 ## Key Features
 
 - 📸 **Image to Structured Data**: Extract information from images and convert it into structured formats.
-- 🔠 **OCR Integration**: Supports PaddleOCR for text extraction from images.
-- 🔍 **Custom Extraction Schemas**: Define and validate the data fields you want to extract.
+- 🔠 **OCR Integration**: Supports multiple OCR models, including PaddleOCR and EasyOCR, for text extraction from images.
+- 🔍 **Custom Extraction Schemas**: Define and validate the data fields you want to extract, tailored to document types like passports and invoices.
 - ✅ **Built-in Validation Rules**: Ensures data accuracy with customizable validation options.
-- 📊 **Easy Conversion to DataFrames**: Seamlessly convert results to pandas DataFrames.
-- 🤖 **LLM Integration**: Use OpenAI, IndoxApi, and other LLMs for advanced text interpretation.
+- 📊 **Easy Conversion to DataFrames**: Seamlessly convert results to pandas DataFrames for analysis and manipulation.
+- 🤖 **LLM Integration**: Use OpenAI, IndoxApi, and other LLMs for advanced text interpretation and extraction quality enhancement.
 - 🔄 **Async Support**: Process multiple images concurrently for optimized performance.
 
 ## Installation
@@ -18,21 +22,24 @@ To set up IndoxMiner, clone the repository and install dependencies:
 
 ```bash
 pip install indoxminer
+pip install opencv-python
+pip install paddlepaddle paddleocr  # or easyocr, tesseract depending on your choice
 ```
-You will also need an OCR library, such as PaddleOCR, to handle the image-to-text conversion.
+
+You will also need an OCR library to handle the image-to-text conversion.
 
 ## Quick Start
 
 ### Step 1: Set up the OCR Processor and LLM
 
 ```python
-from indoxminer import OCRProcessor, Extractor, Schema, AsyncIndoxApi
+from indoxminer import IndoxApi, DocumentProcessor, ProcessingConfig, Schema, Extractor
 
-# Initialize OCR processor (e.g., PaddleOCR)
-ocr_processor = OCRProcessor(model="paddle")
+# Initialize Indox API
+indox_api = IndoxApi(api_key="YOUR_API_KEY")  # Replace with your actual API key
 
-# Initialize IndoxMiner API with AsyncIndoxApi
-llm_extractor = AsyncIndoxApi(api_key="your-api-key")
+# Initialize OCR processor with configuration
+config = ProcessingConfig(ocr_for_images=True, ocr_model='paddle')  # Change to 'easyocr' or 'tesseract' as needed
 ```
 
 ### Step 2: Define Image Paths and Schema
@@ -40,11 +47,17 @@ llm_extractor = AsyncIndoxApi(api_key="your-api-key")
 Define the images to process and select a predefined schema or create a custom one.
 
 ```python
-# List of images to process
-image_paths = ["path/to/invoice1.png", "path/to/invoice2.png"]
+# Define the directory containing passport images
+image_directory = 'data/passport_dataset_jpg/'
+passport_images = [os.path.join(image_directory, f) for f in os.listdir(image_directory) if f.lower().endswith(('.png', '.jpg', '.jpeg'))]
 
-# Choose a predefined schema or define your own
-schema = Schema.Invoice  # Or Schema.Receipt, Schema.Passport, etc.
+# Check if the paths exist
+for image_path in passport_images:
+    if not os.path.exists(image_path):
+        raise FileNotFoundError(f"The image file {image_path} does not exist.")
+
+# Initialize the extractor with the Indox LLM and the passport schema
+extractor = Extractor(llm=indox_api, schema=Schema.Passport)
 ```
 
 ### Step 3: Process Images and Extract Data
@@ -52,106 +65,85 @@ schema = Schema.Invoice  # Or Schema.Receipt, Schema.Passport, etc.
 Process each image with OCR to extract the text, then use IndoxMiner to extract structured data according to the schema.
 
 ```python
-from indoxminer.utils import Document
+# List to hold extraction results
+extraction_results = []
 
-# Convert images to text using OCR
-documents = []
-for path in image_paths:
-    text = ocr_processor.extract_text(path)
-    documents.append(Document(page_content=text, metadata={"filename": path}))
+# Process documents one at a time
+for image_path in passport_images:
+    # Create processor instance for one image
+    processor = DocumentProcessor([image_path])
 
-# Create an extractor with the LLM and schema
-extractor = Extractor(llm=llm_extractor, schema=schema)
+    # Process document to extract text using OCR
+    results = processor.process(config)
 
-# Run the extraction
-extraction_results = await extractor.extract_multiple(documents)
+    # Extract data from the documents
+    for filename, documents in results.items():
+        for doc in documents:
+            # Extract structured data using the extractor
+            result = extractor.extract(doc)
+            extraction_results.append(result)
 
+    # Clear memory after processing each image
+    del processor
+    gc.collect()
 ```
 
 ### Step 4: Handle Results and Convert to DataFrame
 
-Process each image with OCR to extract the text, then use IndoxMiner to extract structured data according to the schema.
+Process the extraction results and convert them into a DataFrame.
 
 ```python
-# Convert results to a DataFrame
-df = extractor.to_dataframe(extraction_results)
-print(df)
+# Convert extraction results to DataFrame
+dataframes = [extractor.to_dataframe(result) for result in extraction_results]
+final_df = pd.concat(dataframes, ignore_index=True)
+print(final_df)
 
 # Display valid results or handle errors
-if extraction_results.is_valid:
-    for result in extraction_results.get_valid_results():
+for result in extraction_results:
+    if result.is_valid:
         print("Extracted Data:", result)
-else:
-    print("Extraction errors occurred:", extraction_results.validation_errors)
-
+    else:
+        print("Extraction errors occurred:", result.validation_errors)
 ```
+
 ## Detailed Workflow
 
-1. **OCR Processing**: Extracts raw text from images using the `OCRProcessor`. This component utilizes OCR to convert image-based content into text.
-2. **Schema Selection**: Choose from pre-defined schemas (like Invoice, Receipt, Passport) or create custom schemas to define the structure of data to be extracted.
+1. **OCR Processing**: Extracts raw text from images using the `DocumentProcessor`. This component utilizes OCR to convert image-based content into text.
+2. **Schema Selection**: Choose from predefined schemas (like Passport, Invoice, Receipt) or create custom schemas to define the structure of data to be extracted.
 3. **Data Extraction**: Using the selected schema, the LLM processes the extracted text and returns it as structured data according to the specified fields.
 4. **Validation**: Each field undergoes validation based on rules defined in the schema, ensuring accuracy by checking constraints like minimum length, numeric range, and specific patterns.
 5. **Output Formats**: Extracted results can be converted into multiple formats, including JSON, pandas DataFrames, or raw dictionaries, making further data processing seamless.
 
 ## Core Components for Image Extraction
 
-### `OCRProcessor`
+### `IndoxApi`
 
-The `OCRProcessor` handles the conversion of image content to text through OCR. It supports multiple OCR models, such as PaddleOCR, which is well-suited for various languages and image resolutions. This component enables easy integration of text extraction from image files.
+The `IndoxApi` class serves as the primary interface for interacting with the Indox API. This component handles authentication, manages API requests, and retrieves responses from the Indox service.
+
+### `DocumentProcessor`
+
+The `DocumentProcessor` class is responsible for managing the workflow of document processing, including reading the documents and applying OCR.
 
 ### `Schema`
 
-Schemas define the structure of data to be extracted from the text, including fields and validation rules. Some of the default schemas include:
-
-- **Invoice**: Extracts fields such as Invoice Number, Date, Customer Name, and Total Amount.
-- **Receipt**: Extracts fields such as Receipt Number, Date, Vendor Name, and Payment Method.
-- **Passport**: Extracts fields such as Passport Number, Name, Nationality, and Date of Birth.
-
-Each schema specifies fields, data types, and validation rules, allowing flexibility in data extraction.
+Schemas define the structure of data to be extracted from the text, including fields and validation rules. 
 
 ### `Extractor`
 
-The `Extractor` is the main class responsible for interacting with the LLM, validating extracted data, and formatting output. It integrates with `AsyncIndoxApi` or other LLM classes to process text extracted from images and return structured data according to the specified schema.
+The `Extractor` is the main class responsible for interacting with the LLM, validating extracted data, and formatting output.
 
 ### Validation Rules
 
-Validation rules ensure data quality by setting constraints on each field within a schema. Common rules include:
+Validation rules ensure data quality by setting constraints on each field within a schema.
 
-- **Minimum and Maximum Values**: For numeric fields, ensuring values fall within a specified range.
-- **String Length Constraints**: For text fields, defining minimum and maximum character limits.
-- **Regex Patterns**: To validate specific formats, such as dates or identifiers, ensuring data consistency and reliability.
-
-## Advanced Configuration
-
-### Custom Schema Definition
-
-Create a schema tailored to your extraction needs.
-
-```python
-from indoxminer import Field, FieldType, ValidationRule, ExtractorSchema
-
-custom_schema = ExtractorSchema(
-    fields=[
-        Field(name="transaction_id", description="Unique transaction ID", field_type=FieldType.STRING, required=True),
-        Field(name="amount", description="Transaction amount in USD", field_type=FieldType.FLOAT, rules=ValidationRule(min_value=0)),
-        Field(name="date", description="Transaction date in YYYY-MM-DD", field_type=FieldType.DATE)
-    ]
-)
-
-
-```
 ## Error Handling and Logging
 
-IndoxMiner provides detailed logging with loguru, which tracks each step of the extraction, including any validation errors. Logs are invaluable for debugging and improving extraction accuracy.
-
+IndoxMiner provides detailed logging, which tracks each step of the extraction, including any validation errors.
 
 ```python
 # Configure logging
 from loguru import logger
-
 logger.add("extraction.log", level="INFO")
-
-
 ```
 
 ## Supported Output Formats
@@ -160,12 +152,16 @@ logger.add("extraction.log", level="INFO")
 - **DataFrame**: Converts the results to a pandas DataFrame for analysis and manipulation.
 - **Dictionary**: Access the raw extraction results as dictionaries for flexible handling.
 
-## Support and Contributions
+## Conclusion
 
-For issues, feature requests, or contributions, please submit them via the GitHub issue tracker or make a pull request. Community involvement is highly valued and encouraged!
+In this document, we outlined how to extract structured data from passport images using IndoxMiner. This process automates the retrieval of critical information typically found in passports, facilitating efficient data processing for various applications.
 
-## License
+### Future Work
 
-This project is licensed under the MIT License.
+Consider enhancing this demo by adding error handling for OCR failures, integrating logging for better traceability, or extending the extraction schema for additional fields.
 
+### Additional Features of IndoxMiner
 
+- **Dynamic Schema Adaptation**: Users can define and adapt schemas dynamically, allowing for easy adjustments to the data extraction process as document formats change.
+- **Comprehensive Documentation**: IndoxMiner comes with thorough documentation to help users implement features, troubleshoot issues, and optimize their extraction processes.
+- **Community Support**: As an open-source project, IndoxMiner benefits from community contributions and support, enabling continuous improvement and feature enhancement.
