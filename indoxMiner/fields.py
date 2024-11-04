@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from enum import Enum
-from typing import List, Optional, Any
-
+from typing import List, Dict, Optional, Any, Union
+import re
 
 @dataclass
 class ValidationRule:
@@ -182,10 +182,7 @@ class CommonValidationRules:
 
 
 
-from dataclasses import dataclass
-from enum import Enum
-from typing import List, Dict, Optional, Any, Union
-import re
+
 
 class FieldType(Enum):
     """Data types supported for field extraction."""
