@@ -36,6 +36,7 @@ class Document:
         page_content (str): The textual content of the document page
         metadata (dict): Associated metadata like filename, page number, etc.
     """
+
     page_content: str
     metadata: dict
 
@@ -57,7 +58,8 @@ class ProcessingConfig:
         ocr_for_images (bool): Whether to perform OCR on images (default: False)
         ocr_model (str): OCR model to use ('tesseract' or 'paddle') (default: 'tesseract')
     """
-    chunk_size: int = 500
+
+    chunk_size: int = 4048
     hi_res_pdf: bool = True
     infer_tables: bool = False
     custom_splitter: Optional[callable] = None
@@ -66,13 +68,14 @@ class ProcessingConfig:
     remove_references: bool = False
     filter_empty_elements: bool = True
     ocr_for_images: bool = False
-    ocr_model: str = 'tesseract'
+    ocr_model: str = "tesseract"
 
 
 class DocumentType(Enum):
     """
     Enumeration of supported document types with their corresponding file extensions.
     """
+
     BMP = "bmp"
     CSV = "csv"
     DOC = "doc"
@@ -118,7 +121,7 @@ class DocumentType(Enum):
         if file_path.lower().startswith(("http://", "https://", "www.")):
             return cls.HTML
 
-        extension = Path(file_path).suffix.lower().lstrip('.')
+        extension = Path(file_path).suffix.lower().lstrip(".")
         if extension == "jpg":
             extension = "jpeg"
 
@@ -149,8 +152,14 @@ class DocumentProcessor:
         Args:
             sources: Single source or list of sources to process
         """
-        self.sources = [str(sources)] if isinstance(sources, (str, Path)) else [str(s) for s in sources]
-        self.doc_types = {source: DocumentType.from_file(source) for source in self.sources}
+        self.sources = (
+            [str(sources)]
+            if isinstance(sources, (str, Path))
+            else [str(s) for s in sources]
+        )
+        self.doc_types = {
+            source: DocumentType.from_file(source) for source in self.sources
+        }
         self.ocr_processor = None
 
     def _init_ocr_processor(self):
@@ -173,12 +182,12 @@ class DocumentProcessor:
         import datetime
 
         metadata = {
-            'filename': Path(file_path).name,
-            'file_directory': str(Path(file_path).parent),
-            'filetype': self._get_filetype(file_path),
-            'page_number': 1,
-            'text_as_html': text,
-            'last_modified': datetime.datetime.now().isoformat(),
+            "filename": Path(file_path).name,
+            "file_directory": str(Path(file_path).parent),
+            "filetype": self._get_filetype(file_path),
+            "page_number": 1,
+            "text_as_html": text,
+            "last_modified": datetime.datetime.now().isoformat(),
         }
 
         element = Text(text=text)
@@ -201,20 +210,33 @@ class DocumentProcessor:
         filtered = elements
 
         if self.config.filter_empty_elements:
-            filtered = [el for el in filtered if hasattr(el, 'text') and el.text and el.text.strip()]
+            filtered = [
+                el
+                for el in filtered
+                if hasattr(el, "text") and el.text and el.text.strip()
+            ]
 
         if self.config.remove_headers:
-            filtered = [el for el in filtered if getattr(el, 'category', '') != "Header"]
+            filtered = [
+                el for el in filtered if getattr(el, "category", "") != "Header"
+            ]
 
         if self.config.remove_references:
             try:
                 reference_titles = [
-                    el for el in filtered
-                    if el.text and el.text.strip().lower() == "references" and getattr(el, 'category', '') == "Title"
+                    el
+                    for el in filtered
+                    if el.text
+                    and el.text.strip().lower() == "references"
+                    and getattr(el, "category", "") == "Title"
                 ]
                 if reference_titles:
                     reference_id = reference_titles[0].id
-                    filtered = [el for el in filtered if getattr(el.metadata, 'parent_id', None) != reference_id]
+                    filtered = [
+                        el
+                        for el in filtered
+                        if getattr(el.metadata, "parent_id", None) != reference_id
+                    ]
             except Exception as e:
                 print(f"Warning: Could not process references: {e}")
 
@@ -231,13 +253,18 @@ class DocumentProcessor:
             List[Element]: Extracted elements from the document
         """
         try:
-            if (file_path.lower().endswith((".png", ".jpg", ".jpeg", ".tiff", ".bmp", ".heic")) and
-                    self.config.ocr_for_images):
+            if (
+                file_path.lower().endswith(
+                    (".png", ".jpg", ".jpeg", ".tiff", ".bmp", ".heic")
+                )
+                and self.config.ocr_for_images
+            ):
                 text = self.ocr_processor.extract_text(file_path)
                 return self._create_element_from_ocr(text, file_path)
 
             elif file_path.lower().endswith(".pdf"):
                 from unstructured.partition.pdf import partition_pdf
+
                 return partition_pdf(
                     filename=file_path,
                     strategy="hi_res" if self.config.hi_res_pdf else "fast",
@@ -246,24 +273,40 @@ class DocumentProcessor:
 
             elif file_path.lower().endswith((".xlsx", ".xls")):
                 from unstructured.partition.xlsx import partition_xlsx
-                elements = partition_xlsx(filename=file_path)
-                return [el for el in elements if getattr(el.metadata, 'text_as_html', None) is not None]
 
-            elif file_path.lower().startswith(("www", "http")) or file_path.lower().endswith(".html"):
+                elements = partition_xlsx(filename=file_path)
+                return [
+                    el
+                    for el in elements
+                    if getattr(el.metadata, "text_as_html", None) is not None
+                ]
+
+            elif file_path.lower().startswith(
+                ("www", "http")
+            ) or file_path.lower().endswith(".html"):
                 from unstructured.partition.html import partition_html
-                url = file_path if urlparse(file_path).scheme else f"https://{file_path}"
+
+                url = (
+                    file_path if urlparse(file_path).scheme else f"https://{file_path}"
+                )
                 return partition_html(url=url)
 
-            elif file_path.lower().endswith((".png", ".jpg", ".jpeg", ".tiff", ".bmp", ".heic")):
+            elif file_path.lower().endswith(
+                (".png", ".jpg", ".jpeg", ".tiff", ".bmp", ".heic")
+            ):
                 from unstructured.partition.image import partition_image
-                return partition_image(filename=file_path,strategy="auto")
+
+                return partition_image(filename=file_path, strategy="auto")
 
             elif file_path.lower().endswith((".eml", ".msg")):
                 from unstructured.partition.email import partition_email
+
                 return partition_email(filename=file_path)
 
             elif file_path.lower().endswith((".docx", ".doc", ".pptx", ".ppt")):
-                content_type = "docx" if file_path.lower().endswith((".docx", ".doc")) else "pptx"
+                content_type = (
+                    "docx" if file_path.lower().endswith((".docx", ".doc")) else "pptx"
+                )
                 partition_func = import_unstructured_partition(content_type)
                 return partition_func(filename=file_path)
 
@@ -289,12 +332,14 @@ class DocumentProcessor:
         documents = []
 
         def get_page_number(element):
-            return getattr(element.metadata, 'page_number', 1)
+            return getattr(element.metadata, "page_number", 1)
 
         sorted_elements = sorted(elements, key=get_page_number)
 
         for page_num, page_elements in groupby(sorted_elements, key=get_page_number):
-            page_content = " ".join(el.text for el in page_elements if hasattr(el, 'text') and el.text)
+            page_content = " ".join(
+                el.text for el in page_elements if hasattr(el, "text") and el.text
+            )
             page_content = page_content.replace("\n", " ").strip()
 
             if page_content:
@@ -349,7 +394,9 @@ class DocumentProcessor:
 
         return chunks
 
-    def _process_elements_to_document(self, elements: List[Element], source: str) -> List[Document]:
+    def _process_elements_to_document(
+        self, elements: List[Element], source: str
+    ) -> List[Document]:
         """
         Convert elements to Document objects with appropriate metadata.
 
@@ -364,25 +411,32 @@ class DocumentProcessor:
         documents = []
 
         for idx, content in enumerate(page_contents, 1):
-            if self._should_chunk_content(content, self.config.chunk_size):
-                chunks = self._chunk_content(content, self.config.chunk_size)
-                for chunk_idx, chunk in enumerate(chunks, 1):
-                    metadata = {
-                        'filename': Path(source).name,
-                        'filetype': self._get_filetype(source),
-                        'page_number': idx,
-                        'chunk_number': chunk_idx,
-                        'source': source
-                    }
-                    documents.append(Document(page_content=chunk, metadata=metadata))
-            else:
-                metadata = {
-                    'filename': Path(source).name,
-                    'filetype': self._get_filetype(source),
-                    'page_number': idx,
-                    'source': source
-                }
-                documents.append(Document(page_content=content, metadata=metadata))
+            # if self._should_chunk_content(content, self.config.chunk_size):
+            #     chunks = self._chunk_content(content, self.config.chunk_size)
+            #     for chunk_idx, chunk in enumerate(chunks, 1):
+            #         metadata = {
+            #             "filename": Path(source).name,
+            #             "filetype": self._get_filetype(source),
+            #             "page_number": idx,
+            #             "chunk_number": chunk_idx,
+            #             "source": source,
+            #         }
+            #         documents.append(Document(page_content=chunk, metadata=metadata))
+            # else:
+            #     metadata = {
+            #         "filename": Path(source).name,
+            #         "filetype": self._get_filetype(source),
+            #         "page_number": idx,
+            #         "source": source,
+            #     }
+            #     documents.append(Document(page_content=content, metadata=metadata))
+            metadata = {
+                "filename": Path(source).name,
+                "filetype": self._get_filetype(source),
+                "page_number": idx,
+                "source": source,
+            }
+            documents.append(Document(page_content=content, metadata=metadata))
 
         return documents
 
@@ -415,7 +469,9 @@ class DocumentProcessor:
         }
         return mime_types.get(doc_type, "application/octet-stream")
 
-    def process(self, config: Optional[ProcessingConfig] = None) -> Dict[str, List[Document]]:
+    def process(
+        self, config: Optional[ProcessingConfig] = None
+    ) -> Dict[str, List[Document]]:
         """Process all documents with the given configuration."""
         self.config = config or ProcessingConfig()
 
