@@ -4,12 +4,13 @@ from loguru import logger
 import re
 import pandas as pd
 import json
+from tabulate import tabulate
 
-from .loader import Document
-from .schema import Field, FieldType, OutputFormat
-from .schema import ExtractorSchema
-from .extraction_results import ExtractionResult, ExtractionResults
-from .llms import BaseLLM
+# from .loader import Document
+# from .schema import Field, FieldType, OutputFormat
+# from .schema import ExtractorSchema
+# from .extraction_results import ExtractionResult, ExtractionResults
+# from .llms import BaseLLM
 
 
 class Extractor:
@@ -319,3 +320,101 @@ class Extractor:
         except Exception as e:
             logger.error(f"Failed to convert to DataFrame: {e}")
             return None
+
+
+    def to_json(self, result: Union[ExtractionResult, ExtractionResults]) -> Optional[str]:
+        """Convert extraction result to a JSON string.
+        
+        Args:
+            result: ExtractionResult or ExtractionResults to convert
+
+        Returns:
+            Optional[str]: JSON string of the extracted data, or None if conversion fails
+        """
+        try:
+            if isinstance(result, ExtractionResult):
+                return json.dumps(result.data, indent=2)
+            elif isinstance(result, ExtractionResults):
+                return json.dumps(result.data, indent=2)
+            else:
+                raise ValueError("Invalid result type")
+        except Exception as e:
+            logger.error(f"Failed to convert to JSON: {e}")
+            return None
+
+    def to_markdown(self, result: Union[ExtractionResult, ExtractionResults]) -> Optional[str]:
+        """Convert extraction result to a Markdown formatted string.
+        
+        Args:
+            result: ExtractionResult or ExtractionResults to convert
+
+        Returns:
+            Optional[str]: Markdown string of the extracted data, or None if conversion fails
+        """
+        try:
+            if isinstance(result, ExtractionResult):
+                # Prepare a Markdown table for a single result
+                return self._dict_to_markdown(result.data)
+            elif isinstance(result, ExtractionResults):
+                # Prepare Markdown for multiple results
+                markdown = ""
+                for res in result.data:
+                    markdown += self._dict_to_markdown(res) + "\n\n"
+                return markdown.strip()
+            else:
+                raise ValueError("Invalid result type")
+        except Exception as e:
+            logger.error(f"Failed to convert to Markdown: {e}")
+            return None
+
+
+    def to_table(self, result: Union[ExtractionResult, ExtractionResults]) -> Optional[str]:
+        """Convert extraction result to a formatted table string.
+        
+        Args:
+            result: ExtractionResult or ExtractionResults to convert
+
+        Returns:
+            Optional[str]: Table string of the extracted data, or None if conversion fails
+        """
+        try:
+            if isinstance(result, ExtractionResult):
+                # Prepare a table for a single result
+                return self._dict_to_table(result.data)
+            elif isinstance(result, ExtractionResults):
+                # Prepare table for multiple results
+                table_rows = []
+                for res in result.data:
+                    table_rows.append(self._dict_to_table(res))
+                return "\n\n".join(table_rows)
+            else:
+                raise ValueError("Invalid result type")
+        except Exception as e:
+            logger.error(f"Failed to convert to table: {e}")
+            return None
+
+    def _dict_to_markdown(self, data: Dict) -> str:
+        """Helper function to convert a dictionary to a Markdown formatted table.
+        
+        Args:
+            data: Dictionary containing data to format
+
+        Returns:
+            str: Markdown formatted string
+        """
+        headers = list(data.keys())
+        rows = [[data[key] for key in headers]]
+        return tabulate(rows, headers=headers, tablefmt='github')
+
+    def _dict_to_table(self, data: Dict) -> str:
+        """Helper function to convert a dictionary to a formatted table.
+        
+        Args:
+            data: Dictionary containing data to format
+
+        Returns:
+            str: Formatted table string
+        """
+        headers = list(data.keys())
+        rows = [[data[key] for key in headers]]
+        return tabulate(rows, headers=headers, tablefmt='grid')
