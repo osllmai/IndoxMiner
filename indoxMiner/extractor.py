@@ -6,11 +6,11 @@ import pandas as pd
 import json
 from tabulate import tabulate
 
-# from .loader import Document
-# from .schema import Field, FieldType, OutputFormat
-# from .schema import ExtractorSchema
-# from .extraction_results import ExtractionResult, ExtractionResults
-# from .llms import BaseLLM
+from .loader import Document
+from .schema import Field, FieldType, OutputFormat
+from .schema import ExtractorSchema
+from .extraction_results import ExtractionResult, ExtractionResults
+from .llms import BaseLLM
 
 
 class Extractor:
