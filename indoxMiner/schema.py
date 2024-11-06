@@ -3,6 +3,14 @@ from enum import Enum
 from typing import List, Dict, Optional, Any
 import json
 
+from .fields import (
+    Field,
+    FieldType,
+    ValidationRule,
+    CommonValidationRules,
+    ValidationPatterns,
+ )
+
 @dataclass
 class ExtractorSchema:
     """Schema definition for data extraction with validation and formatting.
