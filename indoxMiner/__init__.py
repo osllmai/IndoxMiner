@@ -1,7 +1,7 @@
 # __init__.py
 
 from .extractor import Extractor
-from .schema import ExtractorSchema, Schema, OutputFormat
+from .schema import ExtractorSchema, Schema
 from .extraction_results import ExtractionResult, ExtractionResults
 from .fields import Field, ValidationRule, FieldType
 
@@ -18,19 +18,16 @@ __all__ = [
     "ExtractionResults",
     "Field",
     "ValidationRule",
-    "OutputFormat",
     "FieldType",
-
     # Document processing related
     "DocumentProcessor",
     "ProcessingConfig",
-
     # llms
     "OpenAi",
     "Anthropic",
     "IndoxApi",
     "AsyncIndoxApi",
-    "AsyncOpenAi"
+    "AsyncOpenAi",
 ]
 
 # Package metadata

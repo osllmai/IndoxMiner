@@ -11,6 +11,7 @@ class ExtractionResult:
         raw_response (str): Original LLM response
         validation_errors (List[str]): List of validation errors
     """
+
     data: Dict[str, Any]
     raw_response: str
     validation_errors: List[str] = field(default_factory=list)
@@ -34,6 +35,7 @@ class ExtractionResults:
         raw_responses (List[str]): Original LLM responses
         validation_errors (Dict[int, List[str]]): Validation errors by index
     """
+
     data: List[Dict[str, Any]]
     raw_responses: List[str]
     validation_errors: Dict[int, List[str]]
@@ -53,7 +55,8 @@ class ExtractionResults:
         Returns:
             List[Dict[str, Any]]: Valid extraction results
         """
-        return [data for i, data in enumerate(self.data)
-                if not self.validation_errors.get(i, [])]
-
-
+        return [
+            data
+            for i, data in enumerate(self.data)
+            if not self.validation_errors.get(i, [])
+        ]

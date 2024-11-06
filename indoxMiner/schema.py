@@ -1,7 +1,14 @@
 from dataclasses import dataclass
-from enum import Enum
 from typing import List, Dict, Optional, Any
 import json
+from .fields import (
+    ValidationPatterns,
+    ValidationRule,
+    CommonValidationRules,
+    Field,
+    FieldType,
+)
+
 
 @dataclass
 class ExtractorSchema:
@@ -17,6 +24,49 @@ class ExtractorSchema:
     examples: Optional[List[Dict[str, Any]]] = None
     context: Optional[str] = None
 
+    # def to_prompt(self, text: str) -> str:
+    #     """Generate extraction prompt based on schema.
+
+    #     Args:
+    #         text (str): Source text for extraction
+
+    #     Returns:
+    #         str: Formatted prompt for LLM extraction
+    #     """
+    #     fields_desc = "\n".join(
+    #         f"- {field.to_prompt_string()}" for field in self.fields
+    #     )
+
+    #     context_section = f"\nContext:\n{self.context}\n" if self.context else ""
+
+    #     examples_section = ""
+    #     if self.examples:
+    #         examples_json = json.dumps(self.examples, indent=2)
+    #         examples_section = f"\nExamples:\n{examples_json}\n"
+
+    #     return f"""Task: Extract structured information from the given text according to the following schema.
+
+    #     Fields to extract:
+    #     {fields_desc}{context_section}{examples_section}
+
+    #     Output Requirements:
+    # 1. Extract ONLY the specified fields as defined in the schema.
+    # 2. Follow exact field names and types, including nested structures, lists, and dictionaries as specified.
+    # 3. Use JSON format (default).
+    # 4. Retain any nested lists or dictionaries as defined in the schema, maintaining structure in JSON format.
+    # 5. If a required field cannot be found, use null/empty values.
+    # 6. Validate all values based on provided rules within the schema.
+    # 7. For dates, use ISO format (YYYY-MM-DD).
+    # 8. Return ONLY the output in JSON format - no additional text, comments, or explanations.
+    # 9. Critical: Do not alter field structure, even for nested or list fields.
+
+    # Text to analyze:
+    # {text}
+
+    # Return the structured JSON output now:"""
+
+    # 4. Format as needed (CSV, TABLE, MARKDOWN).
+
     def to_prompt(self, text: str) -> str:
         """Generate extraction prompt based on schema.
 
@@ -26,38 +76,40 @@ class ExtractorSchema:
         Returns:
             str: Formatted prompt for LLM extraction
         """
+        # Describe each field in the schema for extraction instructions
         fields_desc = "\n".join(
             f"- {field.to_prompt_string()}" for field in self.fields
         )
 
+        # Include any additional context if provided
         context_section = f"\nContext:\n{self.context}\n" if self.context else ""
 
+        # Add examples, if available, for model guidance
         examples_section = ""
         if self.examples:
             examples_json = json.dumps(self.examples, indent=2)
             examples_section = f"\nExamples:\n{examples_json}\n"
 
+        # Construct the prompt with detailed requirements and nested structure emphasis
         return f"""Task: Extract structured information from the given text according to the following schema.
 
-        Fields to extract:
-        {fields_desc}{context_section}{examples_section}
+    Fields to extract:
+    {fields_desc}{context_section}{examples_section}
 
-        Output Requirements:
-        1. Extract ONLY the specified fields
-        2. Follow the exact field names provided
-        3. Use JSON format (default).
-        4. Format as needed (CSV, TABLE, MARKDOWN).
-        5. If a required field cannot be found, use null/empty values
-        6. Validate all values against provided rules
-        7. For dates, use ISO format (YYYY-MM-DD)
-        8. For lists, provide values in a consistent format
-        9. CRITICAL: Return ONLY the output - no explanations, comments, or additional text before or after
-        10. CRITICAL: Do not include explanation of what was extracted
+    Output Requirements:
+    1. Extract ONLY the specified fields as defined in the schema.
+    2. Follow exact field names and types, including nested structures, lists, and dictionaries as specified.
+    3. Use JSON format (default).
+    4. Retain any nested lists or dictionaries as defined in the schema, maintaining structure in JSON format.
+    5. If a required field cannot be found, use null/empty values.
+    6. Validate all values based on provided rules within the schema.
+    7. For dates, use ISO format (YYYY-MM-DD).
+    8. Return ONLY the output in JSON format - no additional text, comments, or explanations.
+    9. Critical: Do not alter field structure, even for nested or list fields.
 
-        Text to analyze:
-        {text}
+    Text to analyze:
+    {text}"""
 
-        Return the pure output now:"""
 
 class Schema:
     Passport = ExtractorSchema(
@@ -145,7 +197,7 @@ class Schema:
         fields=[
             Field(
                 name="Invoice Number",
-                description="Unique invoice identifier",
+                description="Unique invoice identifier , may have '#' in start of this number",
                 field_type=FieldType.STRING,
                 required=True,
                 rules=ValidationRule(pattern=r"^INV-\d{6}$"),
@@ -173,7 +225,7 @@ class Schema:
             ),
             Field(
                 name="Company Address",
-                description="Address of the company",
+                description="Address of the company or ship to",
                 field_type=FieldType.STRING,
                 required=True,
                 rules=CommonValidationRules.ADDRESS_RULE,
@@ -688,4 +740,3 @@ class Schema:
             ),
         ],
     )
-
