@@ -383,22 +383,24 @@ class Extractor:
             return None
 
     def to_markdown(
-        self,
-        results: Union[
-            ExtractionResult,
-            ExtractionResults,
-            List[Union[ExtractionResult, ExtractionResults]],
-        ],
+            self,
+            results: Union[
+                ExtractionResult,
+                ExtractionResults,
+                List[Union[ExtractionResult, ExtractionResults]],
+            ],
     ) -> Optional[str]:
-        """Convert multiple extraction results to a single Markdown formatted string."""
+        """Convert one or multiple extraction results to a single Markdown formatted string."""
         try:
-            # If a single result is passed, convert to a list for consistency
+            # If results is a single result, wrap it in a list for uniform processing
             if not isinstance(results, list):
                 results = [results]
 
-            # Combine Markdown tables for each result
+            # Process each result's data and combine them
             markdown = "\n\n".join(
-                self._dict_to_markdown(result.data) for result in results
+                self._dict_to_markdown(result.data if isinstance(result, ExtractionResult) else item)
+                for result in results for item in
+                (result.data if isinstance(result, ExtractionResults) else [result.data])
             )
             return markdown
         except Exception as e:
@@ -406,21 +408,25 @@ class Extractor:
             return None
 
     def to_table(
-        self,
-        results: Union[
-            ExtractionResult,
-            ExtractionResults,
-            List[Union[ExtractionResult, ExtractionResults]],
-        ],
+            self,
+            results: Union[
+                ExtractionResult,
+                ExtractionResults,
+                List[Union[ExtractionResult, ExtractionResults]],
+            ],
     ) -> Optional[str]:
-        """Convert multiple extraction results to a single formatted table string."""
+        """Convert one or multiple extraction results to a single formatted table string."""
         try:
-            # If a single result is passed, convert to a list for consistency
+            # If results is a single result, wrap it in a list for uniform processing
             if not isinstance(results, list):
                 results = [results]
 
-            # Combine tables for each result
-            table = "\n\n".join(self._dict_to_table(result.data) for result in results)
+            # Process each result's data and combine them
+            table = "\n\n".join(
+                self._dict_to_table(result.data if isinstance(result, ExtractionResult) else item)
+                for result in results for item in
+                (result.data if isinstance(result, ExtractionResults) else [result.data])
+            )
             return table
         except Exception as e:
             logger.error(f"Failed to convert to table: {e}")

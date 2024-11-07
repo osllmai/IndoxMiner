@@ -198,9 +198,8 @@ class Schema:
             Field(
                 name="Invoice Number",
                 description="Unique invoice identifier , may have '#' in start of this number",
-                field_type=FieldType.STRING,
-                required=True,
-                rules=ValidationRule(pattern=r"^INV-\d{6}$"),
+                field_type=FieldType.INTEGER,
+                required=True
             ),
             Field(
                 name="Date",
@@ -209,13 +208,13 @@ class Schema:
                 required=True,
                 rules=CommonValidationRules.DATE_RULE,
             ),
-            Field(
-                name="Due Date",
-                description="Payment due date",
-                field_type=FieldType.DATE,
-                required=True,
-                rules=CommonValidationRules.DATE_RULE,
-            ),
+            # Field(
+            #     name="Due Date",
+            #     description="Payment due date",
+            #     field_type=FieldType.DATE,
+            #     required=True,
+            #     rules=CommonValidationRules.DATE_RULE,
+            # ),
             Field(
                 name="Company Name",
                 description="Name of the company issuing invoice",
@@ -224,18 +223,18 @@ class Schema:
                 rules=ValidationRule(min_length=2, max_length=100),
             ),
             Field(
-                name="Company Address",
+                name="Address",
                 description="Address of the company or ship to",
                 field_type=FieldType.STRING,
                 required=True,
                 rules=CommonValidationRules.ADDRESS_RULE,
             ),
-            Field(
-                name="Company Tax ID",
-                description="Tax ID or VAT number",
-                field_type=FieldType.STRING,
-                rules=ValidationRule(pattern=ValidationPatterns.VAT_NUMBER["eu"]),
-            ),
+            # Field(
+            #     name="Company Tax ID",
+            #     description="Tax ID or VAT number",
+            #     field_type=FieldType.STRING,
+            #     rules=ValidationRule(pattern=ValidationPatterns.VAT_NUMBER["eu"]),
+            # ),
             Field(
                 name="Customer Name",
                 description="Name of the customer",
@@ -243,13 +242,13 @@ class Schema:
                 required=True,
                 rules=CommonValidationRules.NAME_RULE,
             ),
-            Field(
-                name="Customer Address",
-                description="Address of the customer",
-                field_type=FieldType.STRING,
-                required=True,
-                rules=CommonValidationRules.ADDRESS_RULE,
-            ),
+            # Field(
+            #     name="Customer Address",
+            #     description="Address of the customer",
+            #     field_type=FieldType.STRING,
+            #     required=True,
+            #     rules=CommonValidationRules.ADDRESS_RULE,
+            # ),
             Field(
                 name="Items",
                 description="List of items in the invoice",
