@@ -383,6 +383,7 @@ class Extractor:
             logger.error(f"Failed to convert to JSON: {e}")
             return None
 
+
     def to_markdown(
             self,
             results: Union[
@@ -393,17 +394,15 @@ class Extractor:
     ) -> Optional[str]:
         """Convert one or multiple extraction results to a single Markdown formatted string."""
         try:
-            # If results is a single result, wrap it in a list for uniform processing
             if not isinstance(results, list):
                 results = [results]
 
-            # Process each result's data and combine them
-            markdown = "\n\n".join(
-                self._dict_to_markdown(result.data if isinstance(result, ExtractionResult) else item)
-                for result in results for item in
-                (result.data if isinstance(result, ExtractionResults) else [result.data])
+            markdown_output = "\n\n".join(
+                self._extract_items_to_markdown(result.data if isinstance(result, ExtractionResult) else item)
+                for result in results
+                for item in (result.data if isinstance(result, ExtractionResults) else [result.data])
             )
-            return markdown
+            return markdown_output
         except Exception as e:
             logger.error(f"Failed to convert to Markdown: {e}")
             return None
@@ -418,20 +417,44 @@ class Extractor:
     ) -> Optional[str]:
         """Convert one or multiple extraction results to a single formatted table string."""
         try:
-            # If results is a single result, wrap it in a list for uniform processing
             if not isinstance(results, list):
                 results = [results]
 
-            # Process each result's data and combine them
-            table = "\n\n".join(
-                self._dict_to_table(result.data if isinstance(result, ExtractionResult) else item)
-                for result in results for item in
-                (result.data if isinstance(result, ExtractionResults) else [result.data])
+            table_output = "\n\n".join(
+                self._extract_items_to_table(result.data if isinstance(result, ExtractionResult) else item)
+                for result in results
+                for item in (result.data if isinstance(result, ExtractionResults) else [result.data])
             )
-            return table
+            return table_output
         except Exception as e:
             logger.error(f"Failed to convert to table: {e}")
             return None
+
+    def _extract_items_to_markdown(self, data: Dict[str, Any]) -> str:
+        """Convert data with nested 'items' into a more readable Markdown format."""
+        markdown_sections = []
+        headers = [key for key in data.keys() if key != "items"]
+        values = [data[key] for key in headers]
+        markdown_sections.append(tabulate([values], headers=headers, tablefmt="github"))
+
+        if "items" in data and isinstance(data["items"], list):
+            for item in data["items"]:
+                markdown_sections.append(self._dict_to_markdown(item))
+
+        return "\n\n".join(markdown_sections)
+
+    def _extract_items_to_table(self, data: Dict[str, Any]) -> str:
+        """Convert data with nested 'items' into a more readable table format."""
+        table_sections = []
+        headers = [key for key in data.keys() if key != "items"]
+        values = [data[key] for key in headers]
+        table_sections.append(tabulate([values], headers=headers, tablefmt="grid"))
+
+        if "items" in data and isinstance(data["items"], list):
+            for item in data["items"]:
+                table_sections.append(self._dict_to_table(item))
+
+        return "\n\n".join(table_sections)
 
     def _dict_to_markdown(self, data: Dict) -> str:
         headers = list(data.keys())
@@ -442,3 +465,4 @@ class Extractor:
         headers = list(data.keys())
         rows = [[data[key] for key in headers]]
         return tabulate(rows, headers=headers, tablefmt="grid")
+
