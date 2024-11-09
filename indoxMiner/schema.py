@@ -197,6 +197,7 @@ class Schema:
         fields=[
             Field(
                 name="Invoice Number",
+
                 description="Unique invoice identifier",
                 field_type=FieldType.INTEGER,
                 required=True,
@@ -227,6 +228,8 @@ class Schema:
                 description="Address of the company or ship to",
                 field_type=FieldType.STRING,
                 required=True,
+                rules=CommonValidationRules.ADDRESS_RULE,
+
             ),
             # Field(
             #     name="Company Tax ID",
