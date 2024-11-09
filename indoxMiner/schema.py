@@ -197,9 +197,10 @@ class Schema:
         fields=[
             Field(
                 name="Invoice Number",
-                description="Unique invoice identifier , may have '#' in start of this number",
+
+                description="Unique invoice identifier",
                 field_type=FieldType.INTEGER,
-                required=True
+                required=True,
             ),
             Field(
                 name="Date",
@@ -228,6 +229,7 @@ class Schema:
                 field_type=FieldType.STRING,
                 required=True,
                 rules=CommonValidationRules.ADDRESS_RULE,
+
             ),
             # Field(
             #     name="Company Tax ID",

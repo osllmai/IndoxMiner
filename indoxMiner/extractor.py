@@ -192,6 +192,7 @@ class Extractor:
 
     # Helper methods for JSON processing
     def _clean_json_response(self, response_text: str) -> str:
+        print(response_text)
         response_text = re.sub(r"```json\s*|\s*```", "", response_text.strip())
         return "\n".join(
             re.sub(r"\s*//.*$", "", line.rstrip())
@@ -300,7 +301,7 @@ class Extractor:
                     )
         return validation_errors
 
-    # Data conversion methods
+    # # Data conversion methods
     def to_dataframe(
         self,
         results: Union[
