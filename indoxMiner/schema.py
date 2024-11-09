@@ -234,13 +234,13 @@ class Schema:
             #     field_type=FieldType.STRING,
             #     rules=ValidationRule(pattern=ValidationPatterns.VAT_NUMBER["eu"]),
             # ),
-            # Field(
-            #     name="Customer Name",
-            #     description="Name of the customer",
-            #     field_type=FieldType.STRING,
-            #     required=True,
-            #     rules=CommonValidationRules.NAME_RULE,
-            # ),
+            Field(
+                name="Customer Name",
+                description="Name of the customer",
+                field_type=FieldType.STRING,
+                required=True,
+                rules=CommonValidationRules.NAME_RULE,
+            ),
             # Field(
             #     name="Customer Address",
             #     description="Address of the customer",
