@@ -188,23 +188,19 @@ class Field:
 
     def __post_init__(self):
         """Validate field configuration after initialization."""
-        # Validate LIST type configuration
         if self.field_type == FieldType.LIST:
             if not self.array_item_type:
                 raise ValueError(
                     "LIST field_type requires array_item_type to be specified"
                 )
-            # Allow dict_fields for LIST type when array_item_type is DICT
             if self.dict_fields and self.array_item_type != FieldType.DICT:
                 raise ValueError(
                     "dict_fields can only be specified for LIST fields with DICT array_item_type"
                 )
 
-        # Validate DICT type configuration
         if self.field_type == FieldType.DICT and not self.dict_fields:
             raise ValueError("DICT field_type requires dict_fields to be specified")
 
-        # Validate nested dictionary fields
         if self.dict_fields:
             for field_name, field_type in self.dict_fields.items():
                 if not isinstance(field_type, (FieldType, Field)):
@@ -275,7 +271,6 @@ class Field:
                 if not self._validate_basic_type(value[field_name], field_type):
                     return False
             elif isinstance(field_type, Field):
-                # Nested Field validation for each subfield
                 if not field_type.validate_value(value[field_name]):
                     return False
 
