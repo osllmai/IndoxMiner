@@ -439,7 +439,7 @@ class VLLM(BaseLLM):
 class IndoxApi(BaseLLM):
     """Synchronous API"""
 
-    def __init__(self, api_key: str, model: str):
+    def __init__(self, api_key: str):
         self.api_key = api_key
 
     def generate(
