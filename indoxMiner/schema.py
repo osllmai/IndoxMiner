@@ -24,49 +24,6 @@ class ExtractorSchema:
     examples: Optional[List[Dict[str, Any]]] = None
     context: Optional[str] = None
 
-    # def to_prompt(self, text: str) -> str:
-    #     """Generate extraction prompt based on schema.
-
-    #     Args:
-    #         text (str): Source text for extraction
-
-    #     Returns:
-    #         str: Formatted prompt for LLM extraction
-    #     """
-    #     fields_desc = "\n".join(
-    #         f"- {field.to_prompt_string()}" for field in self.fields
-    #     )
-
-    #     context_section = f"\nContext:\n{self.context}\n" if self.context else ""
-
-    #     examples_section = ""
-    #     if self.examples:
-    #         examples_json = json.dumps(self.examples, indent=2)
-    #         examples_section = f"\nExamples:\n{examples_json}\n"
-
-    #     return f"""Task: Extract structured information from the given text according to the following schema.
-
-    #     Fields to extract:
-    #     {fields_desc}{context_section}{examples_section}
-
-    #     Output Requirements:
-    # 1. Extract ONLY the specified fields as defined in the schema.
-    # 2. Follow exact field names and types, including nested structures, lists, and dictionaries as specified.
-    # 3. Use JSON format (default).
-    # 4. Retain any nested lists or dictionaries as defined in the schema, maintaining structure in JSON format.
-    # 5. If a required field cannot be found, use null/empty values.
-    # 6. Validate all values based on provided rules within the schema.
-    # 7. For dates, use ISO format (YYYY-MM-DD).
-    # 8. Return ONLY the output in JSON format - no additional text, comments, or explanations.
-    # 9. Critical: Do not alter field structure, even for nested or list fields.
-
-    # Text to analyze:
-    # {text}
-
-    # Return the structured JSON output now:"""
-
-    # 4. Format as needed (CSV, TABLE, MARKDOWN).
-
     def to_prompt(self, text: str) -> str:
         """Generate extraction prompt based on schema.
 
@@ -197,7 +154,6 @@ class Schema:
         fields=[
             Field(
                 name="Invoice Number",
-
                 description="Unique invoice identifier",
                 field_type=FieldType.INTEGER,
                 required=True,
@@ -209,13 +165,6 @@ class Schema:
                 required=True,
                 rules=CommonValidationRules.DATE_RULE,
             ),
-            # Field(
-            #     name="Due Date",
-            #     description="Payment due date",
-            #     field_type=FieldType.DATE,
-            #     required=True,
-            #     rules=CommonValidationRules.DATE_RULE,
-            # ),
             Field(
                 name="Company Name",
                 description="Name of the company issuing invoice",
@@ -229,14 +178,7 @@ class Schema:
                 field_type=FieldType.STRING,
                 required=True,
                 rules=CommonValidationRules.ADDRESS_RULE,
-
             ),
-            # Field(
-            #     name="Company Tax ID",
-            #     description="Tax ID or VAT number",
-            #     field_type=FieldType.STRING,
-            #     rules=ValidationRule(pattern=ValidationPatterns.VAT_NUMBER["eu"]),
-            # ),
             Field(
                 name="Customer Name",
                 description="Name of the customer",
@@ -244,13 +186,6 @@ class Schema:
                 required=True,
                 rules=CommonValidationRules.NAME_RULE,
             ),
-            # Field(
-            #     name="Customer Address",
-            #     description="Address of the customer",
-            #     field_type=FieldType.STRING,
-            #     required=True,
-            #     rules=CommonValidationRules.ADDRESS_RULE,
-            # ),
             Field(
                 name="Items",
                 description="List of items in the invoice",
