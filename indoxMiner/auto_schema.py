@@ -151,14 +151,17 @@ Text to analyze:
         return False
 
     def _detect_headers(self, text: str) -> List[str]:
-        """Detect column headers from table-like text."""
+        """Detect column headers from table-like text while filtering out non-field phrases."""
         lines = text.split("\n")
         potential_headers = []
+
+        # List of known non-field phrases to ignore
+        ignore_phrases = {"Thanks for your", "First Class"}
 
         for i, line in enumerate(lines[:3]):  # Check first few lines
             # Split by common delimiters
             cells = re.split(r"\s{2,}|\t|\|", line.strip())
-            cells = [cell.strip() for cell in cells if cell.strip()]
+            cells = [cell.strip() for cell in cells if cell.strip() and cell not in ignore_phrases]
 
             # Header characteristics
             looks_like_header = all(
@@ -171,12 +174,20 @@ Text to analyze:
 
         return potential_headers
 
+
     def _detect_form_fields(self, text: str) -> Dict[str, str]:
-        """Detect form-like field labels and sample values."""
+        """Detect form-like field labels and sample values, skipping non-fields."""
         fields = {}
         lines = text.split("\n")
+        
+        # List of known non-field phrases to ignore
+        ignore_phrases = {"Thanks for your"}
 
         for line in lines:
+            # Skip lines with non-field phrases
+            if any(phrase in line for phrase in ignore_phrases):
+                continue
+
             # Look for label-value patterns
             matches = re.finditer(r"([A-Za-z][A-Za-z\s]+)[\s:]+([^:]+)(?=\s*|$)", line)
             for match in matches:
@@ -186,6 +197,7 @@ Text to analyze:
                     fields[label] = value
 
         return fields
+
 
     def _infer_field_type(self, label: str, sample: str) -> str:
         """Infer field type from label and sample value."""

@@ -252,52 +252,45 @@ class Extractor:
             List[Union[ExtractionResult, ExtractionResults]],
         ],
     ) -> Optional[pd.DataFrame]:
-        """Convert one or multiple extraction results to a single pandas DataFrame."""
+        """Convert extraction results to a pandas DataFrame, handling nested 'items' structures."""
         try:
             if not isinstance(results, list):
                 results = [results]
 
-            dataframes = []
+            rows = []
             for result in results:
-                if isinstance(result, ExtractionResult):
-                    if "items" in result.data:
-                        df = pd.DataFrame(result.data["items"])
-                    else:
-                        df = pd.DataFrame([result.data])
-                elif isinstance(result, ExtractionResults):
-                    if any("items" in res for res in result.data):
-                        items = []
-                        for res in result.data:
-                            if "items" in res:
-                                items.extend(res["items"])
-                            else:
-                                items.append(res)
-                        df = pd.DataFrame(items)
-                    else:
-                        df = pd.DataFrame(result.data)
-                else:
-                    raise ValueError("Invalid result type")
+                if isinstance(result, ExtractionResults):
+                    for res in result.data:
+                        if "items" in res:
+                            # Copy main invoice data, excluding the nested 'items'
+                            main_data = res.copy()
+                            line_items = main_data.pop("items", [])
+                            
+                            # Flatten each item in 'items' and combine with main invoice fields
+                            for item in line_items:
+                                row = {**main_data, **item}  # Merge dictionaries
+                                rows.append(row)
+                                print("Row added:", row)  # Debug print to confirm structure
+                        else:
+                            rows.append(res)
 
-                dataframes.append(df)
+            # Create a DataFrame from the list of flattened rows
+            if rows:
+                final_df = pd.DataFrame(rows)
+            else:
+                print("No rows to create DataFrame.")
+                return pd.DataFrame()  # Return an empty DataFrame if no data is found
 
-            final_df = pd.concat(dataframes, ignore_index=True)
-
-            expected_columns = [field.name for field in self.schema.fields]
-            final_df = final_df.reindex(columns=expected_columns)
-
-            numeric_columns = [
-                field.name
-                for field in self.schema.fields
-                if field.field_type in [FieldType.FLOAT, FieldType.INTEGER]
-            ]
-            for col in numeric_columns:
-                final_df[col] = pd.to_numeric(final_df[col], errors="coerce")
-
-            return final_df
+            # Return the DataFrame directly if it has columns
+            return final_df if not final_df.empty else pd.DataFrame()
 
         except Exception as e:
-            logger.error(f"Failed to convert to DataFrame: {e}")
+            print(f"Failed to convert to DataFrame: {e}")
             return None
+
+
+
+
 
     def to_json(
         self,
