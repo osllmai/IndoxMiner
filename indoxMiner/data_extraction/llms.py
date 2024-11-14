@@ -316,8 +316,8 @@ class NerdTokenApi(BaseLLM):
             "frequency_penalty": frequency_penalty,
             "max_tokens": max_tokens,
             "messages": [
-                {"content": system_prompt, "role": "system"},
                 {"content": prompt, "role": "user"},
+                {"content": system_prompt, "role": "system"},
             ],
             "model": self.model,
             "presence_penalty": presence_penalty,
@@ -327,15 +327,12 @@ class NerdTokenApi(BaseLLM):
         }
 
         response = requests.post(url, headers=headers, json=data)
-        print(response)
         if response.status_code == 200:
             answer_data = response.json()
-            generated_text = answer_data.get("text_message", "")
+            generated_text = answer_data["choices"][0]["message"]["content"]
             return generated_text
         else:
-            logger.error(
-                f"Error From Nerd Token API: {response.status_code}, {response.text}"
-            )
+            print(f"Error From Nerd Token API: {response.status_code}, {response.text}")
             raise Exception(
                 f"Error From Nerd Token API: {response.status_code}, {response.text}"
             )
@@ -434,56 +431,3 @@ class VLLM(BaseLLM):
         except Exception as e:
             logger.error(f"vLLM generation failed: {e}")
             raise
-
-
-class IndoxApi(BaseLLM):
-    """Synchronous API"""
-
-    def __init__(self, api_key: str):
-        self.api_key = api_key
-
-    def generate(
-        self,
-        prompt: str,
-        system_prompt: str = "You are a precise data extraction assistant. Extract exactly what is asked for, nothing more.",
-        max_tokens: int = 4000,
-        temperature: float = 0.3,
-        stream: bool = False,
-        presence_penalty: float = 0,
-        frequency_penalty: float = 0,
-        top_p: float = 1,
-    ) -> str:
-        url = "http://5.78.55.161/api/chat_completion/generate/"
-        headers = {
-            "accept": "*/*",
-            "Authorization": f"Bearer {self.api_key}",
-            "Content-Type": "application/json",
-        }
-
-        data = {
-            "frequency_penalty": frequency_penalty,
-            "max_tokens": max_tokens,
-            "messages": [
-                {"content": system_prompt, "role": "system"},
-                {"content": prompt, "role": "user"},
-            ],
-            "model": "gpt-4o-mini",
-            "presence_penalty": presence_penalty,
-            "stream": stream,
-            "temperature": temperature,
-            "top_p": top_p,
-        }
-
-        response = requests.post(url, headers=headers, json=data)
-        print(response)
-        if response.status_code == 200:
-            answer_data = response.json()
-            generated_text = answer_data.get("text_message", "")
-            return generated_text
-        else:
-            logger.error(
-                f"Error From Nerd Token API: {response.status_code}, {response.text}"
-            )
-            raise Exception(
-                f"Error From Nerd Token API: {response.status_code}, {response.text}"
-            )
