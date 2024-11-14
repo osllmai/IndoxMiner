@@ -2,6 +2,7 @@
 
 from .extractor import Extractor
 from .schema import ExtractorSchema, Schema
+from .auto_schema import AutoDetectedField, AutoExtractionRules, AutoSchema
 from .extraction_results import ExtractionResult, ExtractionResults
 from .fields import Field, ValidationRule, FieldType
 from .loader import DocumentProcessor, ProcessingConfig
