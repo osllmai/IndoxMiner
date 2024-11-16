@@ -6,16 +6,24 @@ import re
 
 @dataclass
 class ValidationRule:
-    """Enhanced validation rules for ensuring data quality in extracted fields.
+    """
+    Represents a set of validation rules for a data field. It can enforce constraints such as minimum and maximum values,
+    regex patterns, allowed values, and length limits for string fields.
 
     Attributes:
-        min_value (float, optional): Minimum allowed numeric value
-        max_value (float, optional): Maximum allowed numeric value
-        pattern (str, optional): Regex pattern for string validation
-        allowed_values (List[Any], optional): List of valid values
-        min_length (int, optional): Minimum length for string fields
-        max_length (int, optional): Maximum length for string fields
+        min_value (float, optional): Minimum allowed numeric value (e.g., 0.0).
+        max_value (float, optional): Maximum allowed numeric value (e.g., 100.0).
+        pattern (str, optional): Regex pattern to validate string fields (e.g., r'^[A-Za-z]+$').
+        allowed_values (List[Any], optional): List of valid values for the field (e.g., ['small', 'medium', 'large']).
+        min_length (int, optional): Minimum length for string fields (e.g., 3).
+        max_length (int, optional): Maximum length for string fields (e.g., 50).
+    
+    Example:
+        >>> rule = ValidationRule(min_value=10, max_value=100, pattern=r'^[A-Za-z]+$')
+        >>> rule.to_prompt_string()
+        'minimum value: 10; maximum value: 100; must match pattern: ^[A-Za-z]+$'
     """
+
 
     min_value: Optional[float] = None
     max_value: Optional[float] = None
@@ -25,7 +33,19 @@ class ValidationRule:
     max_length: Optional[int] = None
 
     def to_prompt_string(self) -> str:
-        """Convert validation rules to a human-readable format."""
+        """
+        Converts the validation rules to a human-readable string format. This string can be used for documentation or 
+        user prompts.
+
+        Returns:
+            str: A string representation of the validation rules.
+
+        Example:
+            >>> rule = ValidationRule(min_value=0, max_value=10, pattern=r'^[0-9]+$')
+            >>> rule.to_prompt_string()
+            'minimum value: 0; maximum value: 10; must match pattern: ^[0-9]+$'
+        """
+
         rules = []
         if self.min_value is not None:
             rules.append(f"minimum value: {self.min_value}")
@@ -43,13 +63,44 @@ class ValidationRule:
 
     @staticmethod
     def validate_with_pattern(value: str, pattern: str) -> bool:
-        """Validate a string value against a regex pattern."""
+        """
+        Validates a string value against a given regex pattern.
+
+        Args:
+            value (str): The string value to be validated.
+            pattern (str): The regex pattern to validate against.
+
+        Returns:
+            bool: True if the value matches the pattern, False otherwise.
+
+        Example:
+            >>> ValidationRule.validate_with_pattern('test@example.com', r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$')
+            True
+            >>> ValidationRule.validate_with_pattern('12345', r'^[A-Za-z]+$')
+            False
+        """
+
         return bool(re.match(pattern, value))
 
 
 # Common validation patterns
 class ValidationPatterns:
-    """Common validation patterns for different types of fields"""
+    """
+    A collection of predefined regular expression patterns for common data types like emails, phone numbers, credit cards, 
+    and more. These patterns can be used in conjunction with `ValidationRule` to enforce data validation.
+
+    Attributes:
+        EMAIL (str): Regex pattern for validating email addresses.
+        PHONE_INTERNATIONAL (str): Regex pattern for validating international phone numbers.
+        NAME (str): Regex pattern for validating names.
+        DATE_ISO (str): Regex pattern for validating dates in ISO format (YYYY-MM-DD).
+        PASSPORT_NUMBER (dict): Dictionary containing regex patterns for validating passport numbers by country.
+        ...
+    
+    Example:
+        >>> ValidationPatterns.EMAIL
+        '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+    """
 
     # Personal Information
     EMAIL = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
@@ -111,7 +162,17 @@ class ValidationPatterns:
 
 
 class CommonValidationRules:
-    """Predefined validation rules for common field types"""
+    """
+    A set of predefined validation rules for commonly used data fields such as names, emails, phone numbers, and dates.
+    This class offers convenience methods to create validation rules for specific field types.
+
+    Example:
+        >>> CommonValidationRules.NAME_RULE
+        ValidationRule(pattern=r'^[A-Za-z\s\'-]{2,50}$', min_length=2, max_length=50)
+
+        >>> CommonValidationRules.create_enum_rule(['small', 'medium', 'large'])
+        ValidationRule(allowed_values=['small', 'medium', 'large'])
+    """
 
     NAME_RULE = ValidationRule(
         pattern=ValidationPatterns.NAME, min_length=2, max_length=50
@@ -145,22 +206,81 @@ class CommonValidationRules:
 
     @staticmethod
     def create_enum_rule(values: List[str]) -> ValidationRule:
-        """Create a validation rule for enumerated values"""
+        """
+        Creates a validation rule for enumerated values (e.g., a list of allowed options).
+
+        Args:
+            values (List[str]): List of valid values to be used for the rule.
+
+        Returns:
+            ValidationRule: A rule that only allows values from the given list.
+
+        Example:
+            >>> CommonValidationRules.create_enum_rule(['small', 'medium', 'large'])
+            ValidationRule(allowed_values=['small', 'medium', 'large'])
+        """
         return ValidationRule(allowed_values=values)
 
     @staticmethod
     def create_number_range_rule(min_val: float, max_val: float) -> ValidationRule:
-        """Create a validation rule for numeric ranges"""
+        """
+        Creates a validation rule for numeric fields that ensures the value is within a specified range.
+
+        Args:
+            min_val (float): The minimum valid value.
+            max_val (float): The maximum valid value.
+
+        Returns:
+            ValidationRule: A rule that enforces the numeric range.
+
+        Example:
+            >>> CommonValidationRules.create_number_range_rule(10, 100)
+            ValidationRule(min_value=10, max_value=100)
+        """
         return ValidationRule(min_value=min_val, max_value=max_val)
 
     @staticmethod
     def create_text_length_rule(min_len: int, max_len: int) -> ValidationRule:
-        """Create a validation rule for text length"""
+        """
+        Creates a validation rule for string fields that ensures the text length is within a specified range.
+
+        Args:
+            min_len (int): The minimum allowed length of the string.
+            max_len (int): The maximum allowed length of the string.
+
+        Returns:
+            ValidationRule: A rule that enforces the text length constraints.
+
+        Example:
+            >>> CommonValidationRules.create_text_length_rule(5, 20)
+            ValidationRule(min_length=5, max_length=20)
+        """
         return ValidationRule(min_length=min_len, max_length=max_len)
 
 
 class FieldType(Enum):
-    """Data types supported for field extraction."""
+    """
+    Enum that defines the data types supported for field extraction and validation.
+
+    Attributes:
+        STRING (str): Represents a string field.
+        INTEGER (str): Represents an integer field.
+        FLOAT (str): Represents a floating-point number field.
+        BOOLEAN (str): Represents a boolean field (True/False).
+        DATE (str): Represents a date field in ISO format.
+        LIST (str): Represents a list field.
+        DICT (str): Represents a dictionary field.
+        EMAIL (str): Represents an email field.
+        PHONE (str): Represents a phone number field.
+        URL (str): Represents a URL field.
+
+    Example:
+        >>> FieldType.STRING
+        'string'
+
+        >>> FieldType.DATE
+        'date'
+    """
 
     STRING = "string"
     INTEGER = "integer"
@@ -176,7 +296,24 @@ class FieldType(Enum):
 
 @dataclass
 class Field:
-    """Field definition for data extraction with validation rules."""
+    """
+    Represents a data field with associated validation rules and metadata. Fields can be simple types like strings and 
+    integers, or more complex types like lists and dictionaries.
+
+    Attributes:
+        name (str): The name of the field.
+        description (str): A description of the field.
+        field_type (FieldType): The type of the field (e.g., STRING, INTEGER).
+        required (bool): Whether the field is mandatory (default is True).
+        rules (Optional[ValidationRule]): Validation rules associated with the field.
+        array_item_type (Optional[FieldType]): The type of items in a list (if applicable).
+        dict_fields (Optional[Dict[str, Union[FieldType, 'Field']]]): The structure of a dictionary field (if applicable).
+
+    Example:
+        >>> field = Field(name="email", description="User email address", field_type=FieldType.EMAIL, required=True)
+        >>> field.to_prompt_string()
+        'email (email*): User email address'
+    """
 
     name: str
     description: str
@@ -207,7 +344,18 @@ class Field:
                     raise ValueError(f"Invalid dict_fields type for {field_name}")
 
     def to_prompt_string(self) -> str:
-        """Convert field definition to prompt format."""
+        """
+        Converts the field definition to a human-readable string format, which includes the field name, type, description, 
+        and validation rules.
+
+        Returns:
+            str: A string representation of the field.
+
+        Example:
+            >>> field = Field(name="email", description="User email address", field_type=FieldType.EMAIL, rules=CommonValidationRules.EMAIL_RULE)
+            >>> field.to_prompt_string()
+            'email (email*): User email address\n    Validation: must match pattern: ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+        """
         type_desc = self.field_type.value
 
         if self.field_type == FieldType.LIST:
@@ -240,7 +388,22 @@ class Field:
         return ", ".join(formatted)
 
     def validate_value(self, value: Any) -> bool:
-        """Validate a value against the field's type and rules."""
+        """
+        Validates a value against the field's type and validation rules.
+
+        Args:
+            value (Any): The value to validate.
+
+        Returns:
+            bool: True if the value is valid, False otherwise.
+
+        Example:
+            >>> field = Field(name="age", description="User age", field_type=FieldType.INTEGER, rules=CommonValidationRules.create_number_range_rule(18, 99))
+            >>> field.validate_value(25)
+            True
+            >>> field.validate_value(15)
+            False
+        """
         if value is None:
             return not self.required
 

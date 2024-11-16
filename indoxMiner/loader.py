@@ -12,13 +12,21 @@ from .ocr_processor import OCRProcessor
 
 
 def convert_latex_to_md(latex_path):
-    """Converts a LaTeX file to Markdown using the latex2markdown library.
+    """
+    Converts a LaTeX file to Markdown using the latex2markdown library.
 
     Args:
         latex_path (str): The path to the LaTeX file.
 
     Returns:
         str: The converted Markdown content, or None if there's an error.
+    
+    Example:
+        markdown_content = convert_latex_to_md('example.tex')
+        if markdown_content:
+            print(markdown_content)
+        else:
+            print("Conversion failed.")
     """
     import latex2markdown
 
@@ -40,10 +48,14 @@ def import_unstructured_partition(content_type):
     Dynamically imports the appropriate partition function from the unstructured library.
 
     Args:
-        content_type (str): The type of content to process (e.g., 'pdf', 'docx')
+        content_type (str): The type of content to process (e.g., 'pdf', 'docx').
 
     Returns:
-        callable: The partition function for the specified content type
+        callable: The partition function for the specified content type.
+
+    Example:
+        partition_func = import_unstructured_partition('pdf')
+        elements = partition_func('document.pdf')
     """
     module_name = f"unstructured.partition.{content_type}"
     module = importlib.import_module(module_name)
@@ -57,8 +69,12 @@ class Document:
     A dataclass representing a document with its content and metadata.
 
     Attributes:
-        page_content (str): The textual content of the document page
+        page_content (str): The textual content of the document page.
         metadata (dict): Associated metadata like filename, page number, etc.
+    
+    Example:
+        doc = Document(page_content="This is a document page.", metadata={"filename": "doc1.pdf", "page_number": 1})
+        print(doc.page_content)  # Output: This is a document page.
     """
 
     page_content: str
@@ -81,6 +97,10 @@ class ProcessingConfig:
         filter_empty_elements (bool): Whether to remove empty elements (default: True)
         ocr_for_images (bool): Whether to perform OCR on images (default: False)
         ocr_model (str): OCR model to use ('tesseract' or 'paddle') (default: 'tesseract')
+
+    Example:
+        config = ProcessingConfig(chunk_size=1000, hi_res_pdf=True)
+        print(config.chunk_size)  # Output: 1000
     """
 
     chunk_size: int = 4048
@@ -98,6 +118,10 @@ class ProcessingConfig:
 class DocumentType(Enum):
     """
     Enumeration of supported document types with their corresponding file extensions.
+
+    Example:
+        doc_type = DocumentType.from_file('example.pdf')
+        print(doc_type)  # Output: DocumentType.PDF
     """
 
     BMP = "bmp"
@@ -134,13 +158,17 @@ class DocumentType(Enum):
         Determines the document type from a file path or URL.
 
         Args:
-            file_path (str): Path or URL to the document
+            file_path (str): Path or URL to the document.
 
         Returns:
-            DocumentType: The determined document type
+            DocumentType: The determined document type.
 
         Raises:
-            ValueError: If the file type is not supported
+            ValueError: If the file type is not supported.
+
+        Example:
+            doc_type = DocumentType.from_file('document.pdf')
+            print(doc_type)  # Output: DocumentType.PDF
         """
         if file_path.lower().startswith(("http://", "https://", "www.")):
             return cls.HTML
@@ -164,9 +192,13 @@ class DocumentProcessor:
     processing, content chunking, and various filtering options.
 
     Attributes:
-        sources (List[str]): List of file paths or URLs to process
-        doc_types (Dict[str, DocumentType]): Mapping of sources to their document types
-        ocr_processor (Optional[OCRProcessor]): Processor for optical character recognition
+        sources (List[str]): List of file paths or URLs to process.
+        doc_types (Dict[str, DocumentType]): Mapping of sources to their document types.
+        ocr_processor (Optional[OCRProcessor]): Processor for optical character recognition.
+
+    Example:
+        processor = DocumentProcessor(['document1.pdf', 'document2.pdf'])
+        elements = processor._get_elements('document1.pdf')
     """
 
     def __init__(self, sources: Union[str, Path, List[Union[str, Path]]]):
@@ -174,7 +206,10 @@ class DocumentProcessor:
         Initialize the DocumentProcessor with one or more sources.
 
         Args:
-            sources: Single source or list of sources to process
+            sources: Single source or list of sources to process.
+
+        Example:
+            processor = DocumentProcessor('document.pdf')
         """
         self.sources = (
             [str(sources)]
@@ -187,7 +222,12 @@ class DocumentProcessor:
         self.ocr_processor = None
 
     def _init_ocr_processor(self):
-        """Initialize OCR processor if OCR processing is enabled."""
+        """
+        Initialize OCR processor if OCR processing is enabled.
+
+        Example:
+            processor._init_ocr_processor()
+        """
         if self.config.ocr_for_images and not self.ocr_processor:
             self.ocr_processor = OCRProcessor(model=self.config.ocr_model)
 
@@ -196,11 +236,14 @@ class DocumentProcessor:
         Create Element objects from OCR-extracted text.
 
         Args:
-            text (str): Extracted text from OCR
-            file_path (str): Path to the processed file
+            text (str): Extracted text from OCR.
+            file_path (str): Path to the processed file.
 
         Returns:
-            List[Element]: List containing the created Element object
+            List[Element]: List containing the created Element object.
+
+        Example:
+            elements = processor._create_element_from_ocr("OCR text here", "document.png")
         """
         from unstructured.documents.elements import Text
         import datetime

@@ -12,7 +12,22 @@ logger.add(
 
 
 class Document:
-    """Class for storing a piece of text and associated metadata."""
+    """
+    Class for storing a piece of text and associated metadata.
+
+    Attributes:
+        page_content (str): The content of the document (text).
+        metadata (Dict[str, Any]): Metadata associated with the document, provided as keyword arguments.
+        type (Literal["Document"]): The type of the object, always "Document".
+
+    Methods:
+        __repr__ (str): Returns a string representation of the Document, displaying its content and metadata.
+
+    Example:
+        doc = Document("Sample content", author="John Doe", year=2023)
+        print(doc)  # Output: Document(page_content=Sample content, metadata={'author': 'John Doe', 'year': 2023})
+    """
+
 
     def __init__(self, page_content: str, **kwargs: Any) -> None:
         """Initialize the Document with page content and arbitrary metadata."""
@@ -25,14 +40,23 @@ class Document:
 
 
 def convert_latex_to_md(latex_path):
-    """Converts a LaTeX file to Markdown using the latex2markdown library.
+    """
+    Converts a LaTeX file to Markdown using the latex2markdown library.
 
     Args:
-        latex_path (str): The path to the LaTeX file.
+        latex_path (str): The path to the LaTeX file to convert.
 
     Returns:
-        str: The converted Markdown content, or None if there's an error.
+        str: The converted Markdown content, or `None` if there's an error during conversion.
+
+    Example:
+        markdown_content = convert_latex_to_md("example.tex")
+        if markdown_content:
+            print(markdown_content)  # Output: Converted markdown content from LaTeX
+        else:
+            print("Conversion failed")
     """
+
     import latex2markdown
     try:
         with open(latex_path, 'r') as f:
@@ -52,7 +76,26 @@ def filter_complex_metadata(
         *,
         allowed_types: Tuple[Type, ...] = (str, bool, int, float),
 ) -> List[Document]:
-    """Filter out metadata types that are not supported for a vector store."""
+    """
+    Filter out metadata types that are not supported for a vector store.
+
+    Args:
+        documents (List[Document]): A list of `Document` objects to filter.
+        allowed_types (Tuple[Type, ...], optional): A tuple of allowed metadata types (default is (str, bool, int, float)).
+
+    Returns:
+        List[Document]: A list of `Document` objects with filtered metadata.
+
+    Example:
+        documents = [
+            Document("Content 1", author="John", year=2023, complex_data={"nested": "data"}),
+            Document("Content 2", author="Jane", year=2024, valid_field=42)
+        ]
+        filtered_docs = filter_complex_metadata(documents)
+        for doc in filtered_docs:
+            print(doc.metadata)  # Output: {'author': 'John', 'year': 2023} (complex data is filtered out)
+    """
+
     updated_documents = []
     for document in documents:
         filtered_metadata = {}

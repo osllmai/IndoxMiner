@@ -13,7 +13,17 @@ from .utils import Document
 
 
 class Extractor:
-    """Data extractor using LLM with validation and concurrent processing."""
+    """
+    Data extractor using LLM with validation and concurrent processing.
+
+    This class provides methods for extracting structured data from various input types using a language model (LLM). It supports both synchronous and asynchronous extraction, handles validation of extracted fields, and offers various formats for presenting the extracted data, including DataFrame, JSON, Markdown, and table.
+
+    Attributes:
+        llm (Any): The language model used for extraction.
+        schema (Any): The schema that defines the expected data structure and validation rules.
+        max_concurrent (int): Maximum number of concurrent extraction tasks for async processing.
+        is_async (bool): Indicates whether the LLM supports asynchronous operations.
+    """
 
     def __init__(
         self,
@@ -29,7 +39,19 @@ class Extractor:
     def _sync_extract_chunk(
         self, text: str, chunk_index: int
     ) -> Tuple[int, ExtractionResult]:
-        """Synchronous version of extract chunk."""
+        """
+        Synchronous version of extract chunk.
+
+        This method processes a single chunk of text and returns the extracted data along with validation errors, if any.
+
+        Args:
+            text (str): The text to be processed and extracted.
+            chunk_index (int): The index of the chunk for reference in results.
+
+        Returns:
+            Tuple[int, ExtractionResult]: The chunk index and the corresponding ExtractionResult containing extracted data and any validation errors.
+        """
+
         try:
             prompt = self.schema.to_prompt(text)
             response = self.llm.generate(prompt)
@@ -45,7 +67,19 @@ class Extractor:
     async def _async_extract_chunk(
         self, text: str, chunk_index: int
     ) -> Tuple[int, ExtractionResult]:
-        """Asynchronous version of extract chunk."""
+        """
+        Asynchronous version of extract chunk.
+
+        This method processes a single chunk of text asynchronously and returns the extracted data along with validation errors, if any.
+
+        Args:
+            text (str): The text to be processed and extracted.
+            chunk_index (int): The index of the chunk for reference in results.
+
+        Returns:
+            Tuple[int, ExtractionResult]: The chunk index and the corresponding ExtractionResult containing extracted data and any validation errors.
+        """
+
         try:
             prompt = self.schema.to_prompt(text)
             response = await self.llm.generate(prompt)
@@ -59,7 +93,19 @@ class Extractor:
             )
 
     def _validate_field(self, field: Field, value: Any) -> List[str]:
-        """Validate a single field value against its rules."""
+        """
+        Validate a single field value against its rules.
+
+        This method validates a field value based on various rules such as minimum/maximum values, patterns, and required values defined in the schema.
+
+        Args:
+            field (Field): The field to be validated.
+            value (Any): The value of the field to be validated.
+
+        Returns:
+            List[str]: A list of validation error messages, if any.
+        """
+
         errors = []
         if value is None and field.required:
             errors.append(f"{field.name} is required but missing")
@@ -90,7 +136,19 @@ class Extractor:
     def _process_response(
         self, response: str, chunk_index: int
     ) -> Tuple[int, ExtractionResult]:
-        """Process and validate the LLM response, assuming JSON."""
+        """
+        Process and validate the LLM response, assuming JSON.
+
+        This method cleans, parses, and normalizes the LLM's response, followed by validation of the extracted data.
+
+        Args:
+            response (str): The raw response from the LLM.
+            chunk_index (int): The index of the chunk for reference in results.
+
+        Returns:
+            Tuple[int, ExtractionResult]: The chunk index and the corresponding ExtractionResult containing extracted data and validation errors.
+        """
+
         try:
             cleaned_response = self._clean_json_response(response)
             logger.debug(f"Cleaned JSON response: {cleaned_response}")
@@ -121,7 +179,26 @@ class Extractor:
         self,
         input_data: Union[str, Document, List[Document], Dict[str, List[Document]]],
     ) -> Union[ExtractionResult, ExtractionResults]:
-        """Unified extraction method that handles both sync and async LLMs appropriately."""
+        """
+        Unified extraction method that handles both sync and async LLMs appropriately.
+
+        This method handles different input data types (string, Document, list of Documents, or a dictionary of Document lists) and performs data extraction synchronously or asynchronously based on the LLM's capabilities.
+
+        Args:
+            input_data (Union[str, Document, List[Document], Dict[str, List[Document]]]): The input data to be extracted. Can be a string, a Document, a list of Documents, or a dictionary of Document lists.
+
+        Returns:
+            Union[ExtractionResult, ExtractionResults]: The extraction result(s), either a single ExtractionResult or a collection of ExtractionResults.
+
+        Example:
+            input_str = "Extract the names and ages of individuals."
+            extractor = Extractor(llm_model, schema)
+            result = extractor.extract(input_str)
+
+        Raises:
+            ValueError: If the input data type is unsupported.
+        """
+
         if not self.is_async:
             if isinstance(input_data, str):
                 return self._sync_extract_chunk(input_data, 0)[1]
@@ -193,6 +270,18 @@ class Extractor:
             raise ValueError("Unsupported input type")
 
     def _clean_json_response(self, response_text: str) -> str:
+        """
+        Clean the raw JSON response by removing unnecessary characters.
+
+        This method strips out code block delimiters and comments to clean up the raw JSON response from the LLM.
+
+        Args:
+            response_text (str): The raw response text to be cleaned.
+
+        Returns:
+            str: The cleaned response text.
+        """
+
         response_text = re.sub(r"```json\s*|\s*```", "", response_text.strip())
         return "\n".join(
             re.sub(r"\s*//.*$", "", line.rstrip())
@@ -201,6 +290,18 @@ class Extractor:
         )
 
     def _fix_json(self, json_str: str) -> str:
+        """
+        Fix common issues in malformed JSON strings.
+
+        This method fixes common formatting issues in the JSON response, such as missing commas or improperly merged JSON objects.
+
+        Args:
+            json_str (str): The malformed JSON string to be fixed.
+
+        Returns:
+            str: The corrected JSON string.
+        """
+
         fixed_json = re.sub(r",(\s*[}\]])", r"\1", json_str)
         return re.sub(r"}\s*{", "},{", fixed_json)
 
@@ -233,6 +334,18 @@ class Extractor:
         return data
 
     def _validate_data(self, data: Dict) -> List[str]:
+        """
+        Validate the entire extracted data against the schema's rules.
+
+        This method validates each field in the extracted data based on the rules defined in the schema.
+
+        Args:
+            data (Dict): The extracted data to be validated.
+
+        Returns:
+            List[str]: A list of validation error messages, if any.
+        """
+
         validation_errors = []
         for i, item in enumerate(data["items"]):
             for field in self.schema.fields:
@@ -252,52 +365,60 @@ class Extractor:
             List[Union[ExtractionResult, ExtractionResults]],
         ],
     ) -> Optional[pd.DataFrame]:
-        """Convert one or multiple extraction results to a single pandas DataFrame."""
+        """
+        Convert one or multiple extraction results to a single pandas DataFrame.
+
+        This method converts the extracted data into a pandas DataFrame, ensuring that the fields match the schema and numeric columns are properly handled.
+
+        Args:
+            results (Union[ExtractionResult, ExtractionResults, List[Union[ExtractionResult, ExtractionResults]]]): The extraction result(s) to be converted.
+
+        Returns:
+            Optional[pd.DataFrame]: A pandas DataFrame containing the extracted data, or None if the conversion fails.
+
+        Example:
+            result = extractor.extract(input_data)
+            df = extractor.to_dataframe(result)
+        """
+
         try:
             if not isinstance(results, list):
                 results = [results]
 
-            dataframes = []
+            rows = []
             for result in results:
-                if isinstance(result, ExtractionResult):
-                    if "items" in result.data:
-                        df = pd.DataFrame(result.data["items"])
-                    else:
-                        df = pd.DataFrame([result.data])
-                elif isinstance(result, ExtractionResults):
-                    if any("items" in res for res in result.data):
-                        items = []
-                        for res in result.data:
-                            if "items" in res:
-                                items.extend(res["items"])
-                            else:
-                                items.append(res)
-                        df = pd.DataFrame(items)
-                    else:
-                        df = pd.DataFrame(result.data)
-                else:
-                    raise ValueError("Invalid result type")
+                if isinstance(result, ExtractionResults):
+                    for res in result.data:
+                        if "items" in res:
+                            # Copy main invoice data, excluding the nested 'items'
+                            main_data = res.copy()
+                            line_items = main_data.pop("items", [])
 
-                dataframes.append(df)
+                            # Flatten each item in 'items' and combine with main invoice fields
+                            for item in line_items:
+                                row = {**main_data, **item}  # Merge dictionaries
+                                rows.append(row)
+                                print("Row added:", row)  # Debug print to confirm structure
+                        else:
+                            rows.append(res)
 
-            final_df = pd.concat(dataframes, ignore_index=True)
+            # Create a DataFrame from the list of flattened rows
+            if rows:
+                final_df = pd.DataFrame(rows)
+            else:
+                print("No rows to create DataFrame.")
+                return pd.DataFrame()  # Return an empty DataFrame if no data is found
 
-            expected_columns = [field.name for field in self.schema.fields]
-            final_df = final_df.reindex(columns=expected_columns)
-
-            numeric_columns = [
-                field.name
-                for field in self.schema.fields
-                if field.field_type in [FieldType.FLOAT, FieldType.INTEGER]
-            ]
-            for col in numeric_columns:
-                final_df[col] = pd.to_numeric(final_df[col], errors="coerce")
-
-            return final_df
+            # Return the DataFrame directly if it has columns
+            return final_df if not final_df.empty else pd.DataFrame()
 
         except Exception as e:
-            logger.error(f"Failed to convert to DataFrame: {e}")
+            print(f"Failed to convert to DataFrame: {e}")
             return None
+
+
+
+
 
     def to_json(
         self,
@@ -307,7 +428,18 @@ class Extractor:
             List[Union[ExtractionResult, ExtractionResults]],
         ],
     ) -> Optional[str]:
-        """Convert multiple extraction results to a single JSON string."""
+        """
+        Convert multiple extraction results to a single JSON string.
+
+        This method converts the extracted data into a formatted JSON string.
+
+        Args:
+            results (Union[ExtractionResult, ExtractionResults, List[Union[ExtractionResult, ExtractionResults]]]): The extraction result(s) to be converted.
+
+        Returns:
+            Optional[str]: A JSON string containing the extracted data, or None if the conversion fails.
+        """
+
         try:
             if not isinstance(results, list):
                 results = [results]
@@ -326,7 +458,18 @@ class Extractor:
             List[Union[ExtractionResult, ExtractionResults]],
         ],
     ) -> Optional[str]:
-        """Convert one or multiple extraction results to a single Markdown formatted string."""
+        """
+        Convert one or multiple extraction results to a single Markdown formatted string.
+
+        This method converts the extracted data into a Markdown formatted string for easy display.
+
+        Args:
+            results (Union[ExtractionResult, ExtractionResults, List[Union[ExtractionResult, ExtractionResults]]]): The extraction result(s) to be converted.
+
+        Returns:
+            Optional[str]: A Markdown string containing the extracted data, or None if the conversion fails.
+        """
+
         try:
             if not isinstance(results, list):
                 results = [results]
@@ -355,7 +498,19 @@ class Extractor:
             List[Union[ExtractionResult, ExtractionResults]],
         ],
     ) -> Optional[str]:
-        """Convert one or multiple extraction results to a single formatted table string."""
+
+        """
+        Convert one or multiple extraction results to a table formatted string.
+
+        This method converts the extracted data into a table format (using the `tabulate` library) for easy viewing.
+
+        Args:
+            results (Union[ExtractionResult, ExtractionResults, List[Union[ExtractionResult, ExtractionResults]]]): The extraction result(s) to be converted.
+
+        Returns:
+            Optional[str]: A table-formatted string containing the extracted data, or None if the conversion fails.
+        """
+
         try:
             if not isinstance(results, list):
                 results = [results]

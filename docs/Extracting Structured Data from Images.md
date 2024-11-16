@@ -18,7 +18,6 @@ To set up IndoxMiner, clone the repository and install dependencies:
 
 ```bash
 pip install indoxminer
-pip install opencv-python
 pip install paddlepaddle paddleocr  # or easyocr, tesseract depending on your choice
 ```
 
@@ -29,10 +28,10 @@ You will also need an OCR library to handle the image-to-text conversion.
 ### Step 1: Set up the OCR Processor and LLM
 
 ```python
-from indoxminer import IndoxApi, DocumentProcessor, ProcessingConfig, Schema, Extractor
+from indoxminer import OpenAi, DocumentProcessor, ProcessingConfig, Schema, Extractor
 
-# Initialize Indox API
-indox_api = IndoxApi(api_key="YOUR_API_KEY")  # Replace with your actual API key
+# Initialize OpenAi
+openai_api = OpenAi(api_key="YOUR_API_KEY")  # Replace with your actual API key
 
 # Initialize OCR processor with configuration
 config = ProcessingConfig(ocr_for_images=True, ocr_model='paddle')  # Change to 'easyocr' or 'tesseract' as needed
@@ -52,8 +51,8 @@ for image_path in passport_images:
     if not os.path.exists(image_path):
         raise FileNotFoundError(f"The image file {image_path} does not exist.")
 
-# Initialize the extractor with the Indox LLM and the passport schema
-extractor = Extractor(llm=indox_api, schema=Schema.Passport)
+# Initialize the extractor with the OpenAi LLM and the passport schema
+extractor = Extractor(llm=openai_api, schema=Schema.Passport)
 ```
 
 ### Step 3: Process Images and Extract Data
@@ -61,27 +60,13 @@ extractor = Extractor(llm=indox_api, schema=Schema.Passport)
 Process each image with OCR to extract the text, then use IndoxMiner to extract structured data according to the schema.
 
 ```python
-# List to hold extraction results
-extraction_results = []
+processor = DocumentProcessor(passport_images)
 
-# Process documents one at a time
-for image_path in passport_images:
-    # Create processor instance for one image
-    processor = DocumentProcessor([image_path])
+# Process document to extract text using OCR
+results = processor.process(config)
 
-    # Process document to extract text using OCR
-    results = processor.process(config)
-
-    # Extract data from the documents
-    for filename, documents in results.items():
-        for doc in documents:
-            # Extract structured data using the extractor
-            result = extractor.extract(doc)
-            extraction_results.append(result)
-
-    # Clear memory after processing each image
-    del processor
-    gc.collect()
+# Extract data from the documents
+extracted_data = extractor.extract(results)
 ```
 
 ### Step 4: Handle Results and Convert to DataFrame
@@ -90,9 +75,8 @@ Process the extraction results and convert them into a DataFrame.
 
 ```python
 # Convert extraction results to DataFrame
-dataframes = [extractor.to_dataframe(result) for result in extraction_results]
-final_df = pd.concat(dataframes, ignore_index=True)
-print(final_df)
+df = extractor.to_dataframe(extracted_data)
+print(df)
 
 # Display valid results or handle errors
 for result in extraction_results:
@@ -112,9 +96,9 @@ for result in extraction_results:
 
 ## Core Components for Image Extraction
 
-### `IndoxApi`
+### `OpenAi`
 
-The `IndoxApi` class serves as the primary interface for interacting with the Indox API. This component handles authentication, manages API requests, and retrieves responses from the Indox service.
+The `OpenAi` class serves as the primary interface for interacting with the OpenAI. This component handles authentication, manages API requests, and retrieves responses.
 
 ### `DocumentProcessor`
 
@@ -132,21 +116,13 @@ The `Extractor` is the main class responsible for interacting with the LLM, vali
 
 Validation rules ensure data quality by setting constraints on each field within a schema.
 
-## Error Handling and Logging
-
-IndoxMiner provides detailed logging, which tracks each step of the extraction, including any validation errors.
-
-```python
-# Configure logging
-from loguru import logger
-logger.add("extraction.log", level="INFO")
-```
 
 ## Supported Output Formats
 
 - **JSON**: Returns structured data in JSON format, suitable for further processing or storage.
 - **DataFrame**: Converts the results to a pandas DataFrame for analysis and manipulation.
 - **Dictionary**: Access the raw extraction results as dictionaries for flexible handling.
+- **Markdown**: 
 
 ## Conclusion
 
