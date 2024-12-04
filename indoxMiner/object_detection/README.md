@@ -15,7 +15,7 @@
    - **Link**: [YOLOX Paper](https://arxiv.org/abs/2107.08430)
 
 ---
-### 1. **GroundingDINO**
+### 2. **GroundingDINO**
    - **Citation**:
    ```
    @article{liu2023grounding,
@@ -29,7 +29,7 @@
 
 ---
 
-### 2. **LLaVA-NeXT**
+### 3. **LLaVA-NeXT**
    - **Citation 1**:
    ```
    @misc{liu2024llavanext,
