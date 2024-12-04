@@ -1,0 +1,16 @@
+# Usage Example
+# Create the detector object
+detector = GroundingDINOObjectDetector(
+    config_path="groundingdino/config/GroundingDINO_SwinT_OGC.py",
+    model_weights_path="/content/GroundingDINO/groundingdino_swint_ogc.pth"
+)
+
+# Path to input image
+image_path = "/content/download.jpg"
+text_prompt = "chair . person . dog ."
+
+# Detect objects
+result = detector.detect_objects(image_path, text_prompt)
+
+# Visualize results
+detector.visualize_results(result)
