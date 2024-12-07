@@ -1,5 +1,3 @@
-# __init__.py
-
 from .data_extraction.extractor import Extractor
 from .data_extraction.schema import ExtractorSchema, Schema
 from .data_extraction.extraction_results import ExtractionResult, ExtractionResults
@@ -14,6 +12,9 @@ from .data_extraction.llms import (
     AsyncOpenAi,
     Ollama,
 )
+
+# Importing IndoxObjectDetector class for object detection
+from .object_detection.app import IndoxObjectDetector
 
 __all__ = [
     # Extractor and schema related
@@ -35,7 +36,8 @@ __all__ = [
     "AsyncNerdTokenApi",
     "AsyncOpenAi",
     "Ollama",
-    "IndoxApi",
+    # Indox Object Detection
+    "IndoxObjectDetector",
 ]
 
 # Package metadata

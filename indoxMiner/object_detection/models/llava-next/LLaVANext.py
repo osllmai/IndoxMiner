@@ -4,8 +4,6 @@ from PIL import Image
 import numpy as np
 import matplotlib.pyplot as plt
 import copy
-import requests
-from transformers import AutoTokenizer, AutoModelForCausalLM
 from llava.model.builder import load_pretrained_model
 from llava.mm_utils import process_images, tokenizer_image_token
 from llava.constants import DEFAULT_IMAGE_TOKEN, IMAGE_TOKEN_INDEX
@@ -32,9 +30,22 @@ class LLaVANextObjectDetector:
         self.model.tie_weights()
         self.device = device
 
-    def detect_objects(self, cv_image, question="What is shown in this image?"):
-        # Convert OpenCV image (numpy array) to PIL Image for processing
-        image = Image.fromarray(cv2.cvtColor(cv_image, cv2.COLOR_BGR2RGB))
+    def detect_objects(self, image_path, question="What is shown in this image?"):
+        """
+        Detect objects in an image.
+
+        Args:
+            image_path (str): Path to the input image.
+            question (str): A question or prompt to guide the detection.
+
+        Returns:
+            tuple: A list of detected objects and the raw text output from the model.
+        """
+        # Load image from the given path
+        try:
+            image = Image.open(image_path).convert("RGB")
+        except FileNotFoundError:
+            raise FileNotFoundError(f"Image not found at path: {image_path}")
 
         # Prepare inputs with prompt for grounding
         conv_template = "llava_llama_3"
@@ -70,12 +81,20 @@ class LLaVANextObjectDetector:
         text_output = self.tokenizer.batch_decode(cont, skip_special_tokens=True)[0]
 
         # Post-process the output to extract entities like objects and their possible bounding boxes
-        # Let's assume the model provides a structured response with bounding box coordinates in text
         objects = self.extract_objects_from_text(text_output)
 
         return objects, text_output
 
     def extract_objects_from_text(self, text_output):
+        """
+        Extract objects and bounding boxes from the model's text output.
+
+        Args:
+            text_output (str): The text output from the model.
+
+        Returns:
+            list: A list of detected objects with names and bounding boxes.
+        """
         objects = []
         lines = text_output.split("\n")
         for line in lines:
@@ -88,7 +107,23 @@ class LLaVANextObjectDetector:
                 objects.append([object_name, bbox])  # Store object name and bounding box
         return objects
 
-    def visualize_results(self, cv_image, objects, text_output):
+    def visualize_results(self, image_path, objects, text_output):
+        """
+        Visualize detected objects in an image.
+
+        Args:
+            image_path (str): Path to the input image.
+            objects (list): List of detected objects with bounding boxes.
+            text_output (str): The raw text output from the model.
+
+        Returns:
+            numpy.ndarray: The annotated image.
+        """
+        # Load the image using OpenCV
+        cv_image = cv2.imread(image_path)
+        if cv_image is None:
+            raise FileNotFoundError(f"Image not found at path: {image_path}")
+
         # Convert bounding boxes from normalized coordinates to pixel values
         h, w, _ = cv_image.shape
         for entity_name, bbox_list in objects:

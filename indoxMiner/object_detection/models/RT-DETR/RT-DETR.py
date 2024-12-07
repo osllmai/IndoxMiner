@@ -1,5 +1,4 @@
 import torch
-import requests
 from PIL import Image
 import supervision as sv
 from transformers import AutoImageProcessor, AutoModelForObjectDetection
@@ -7,13 +6,30 @@ import matplotlib.pyplot as plt
 
 class RTDETRModel:
     def __init__(self, checkpoint="PekingU/rtdetr_r50vd_coco_o365", device="cuda"):
+        # Initialize the model and processor
         self.device = torch.device(device if torch.cuda.is_available() else "cpu")
         self.model = AutoModelForObjectDetection.from_pretrained(checkpoint).to(self.device)
         self.processor = AutoImageProcessor.from_pretrained(checkpoint)
 
-    def detect_objects(self, image_url, threshold=0.1):  # Lowered threshold
-        # Load image from URL
-        image = Image.open(requests.get(image_url, stream=True).raw)
+    def detect_objects(self, image_path, threshold=0.1):
+        """
+        Detect objects in an image.
+
+        Args:
+            image_path (str): Path to the input image.
+            threshold (float): Detection confidence threshold.
+
+        Returns:
+            PIL.Image.Image: The input image.
+            dict: Detected objects with bounding boxes and scores.
+        """
+        # Load image from the local path
+        try:
+            image = Image.open(image_path).convert("RGB")
+        except FileNotFoundError:
+            raise FileNotFoundError(f"Image not found at path: {image_path}")
+
+        # Prepare inputs for the model
         inputs = self.processor(image, return_tensors="pt").to(self.device)
 
         # Perform inference
@@ -27,9 +43,17 @@ class RTDETRModel:
         )
         return image, results[0]
 
-
-
     def visualize_results(self, image, results):
+        """
+        Visualize detected objects in the image.
+
+        Args:
+            image (PIL.Image.Image): The input image.
+            results (dict): The results from the detect_objects method.
+
+        Returns:
+            PIL.Image.Image: The annotated image.
+        """
         # Convert detections from the model's output
         detections = sv.Detections.from_transformers(results)
 
@@ -47,7 +71,7 @@ class RTDETRModel:
         label_annotator = sv.LabelAnnotator()
         annotated_image = label_annotator.annotate(scene=annotated_image, detections=detections, labels=labels)
 
-        # Save the annotated image
+        # Save the annotated image (optional)
         annotated_image.save("annotated_image.jpg")
 
         # Display the annotated image
@@ -57,5 +81,3 @@ class RTDETRModel:
         plt.show()
 
         return annotated_image
-
-

@@ -12,7 +12,21 @@ class Kosmos2ObjectDetector:
         self.model = AutoModelForVision2Seq.from_pretrained(model_id).to(self.device)
         self.processor = AutoProcessor.from_pretrained(model_id)
 
-    def detect_objects(self, cv_image):
+    def detect_objects(self, image_path):
+        """
+        Detect objects in an image.
+        
+        Args:
+            image_path (str): Path to the input image.
+        
+        Returns:
+            list: Detected objects and bounding boxes.
+        """
+        # Load the image from the given path using OpenCV
+        cv_image = cv2.imread(image_path)
+        if cv_image is None:
+            raise FileNotFoundError(f"Image not found at path: {image_path}")
+
         # Convert OpenCV image (numpy array) to PIL Image for processing
         image = Image.fromarray(cv2.cvtColor(cv_image, cv2.COLOR_BGR2RGB))
 
@@ -44,7 +58,22 @@ class Kosmos2ObjectDetector:
 
         return objects
 
-    def visualize_results(self, image, objects):
+    def visualize_results(self, image_path, objects):
+        """
+        Visualize detected objects in an image.
+        
+        Args:
+            image_path (str): Path to the input image.
+            objects (list): List of detected objects with bounding boxes.
+        
+        Returns:
+            numpy.ndarray: Annotated image.
+        """
+        # Load the image using OpenCV
+        image = cv2.imread(image_path)
+        if image is None:
+            raise FileNotFoundError(f"Image not found at path: {image_path}")
+
         # Convert bounding boxes from normalized coordinates to pixel values
         h, w, _ = image.shape
         for entity_name, bbox_list in objects:
@@ -70,4 +99,3 @@ class Kosmos2ObjectDetector:
         plt.show()
 
         return image
-
