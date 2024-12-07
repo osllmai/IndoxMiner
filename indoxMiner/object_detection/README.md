@@ -15,8 +15,21 @@
    - **Link**: [YOLOX Paper](https://arxiv.org/abs/2107.08430)
 
 ---
+### 2. **GroundingDINO**
+   - **Citation**:
+   ```
+   @article{liu2023grounding,
+  title={Grounding dino: Marrying dino with grounded pre-training for open-set object detection},
+  author={Liu, Shilong and Zeng, Zhaoyang and Ren, Tianhe and Li, Feng and Zhang, Hao and Yang, Jie and Li, Chunyuan and Yang, Jianwei and Su, Hang and Zhu, Jun and others},
+  journal={arXiv preprint arXiv:2303.05499},
+  year={2023}
+}
+   ```
+   - **Link**: [Grounding DINO Paper](https://arxiv.org/abs/2303.05499)
 
-### 2. **LLaVA-NeXT**
+---
+
+### 3. **LLaVA-NeXT**
    - **Citation 1**:
    ```
    @misc{liu2024llavanext,
