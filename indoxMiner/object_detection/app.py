@@ -7,6 +7,7 @@ from object_detection.models.OWL_ViT.owlvit import OWLVitModel
 from object_detection.models.YOLOv8.yolov8_model import YOLOv8Model
 from object_detection.models.Detectron2.detectron2_model import Detectron2Model
 from object_detection.models.SAM2.sam2_model import SAM2Model
+from object_detection.models.YOLOv5.yolov5_model import YOLOv5Model
 
 class IndoxObjectDetection:
     def __init__(self, model_name, device="cuda", **kwargs):
@@ -59,6 +60,10 @@ class IndoxObjectDetection:
 
             model_path = kwargs.get("model_path", "yolov8n.pt")  # Default to yolov8n.pt if not provided
             self.model = YOLOv8Model(model_path=model_path)
+	elif self.model_name == "yolov5":
+
+            model_name = kwargs.get("model_name", "yolov5s")  # Default to yolov5s if not provided
+            self.model = YOLOv5Model(model_name=model_name, device=device)
         elif self.model_name == "detectron2":
 
             config_path = kwargs.get("config_path", "COCO-Detection/faster_rcnn_R_50_FPN_3x.yaml")
@@ -113,6 +118,9 @@ class IndoxObjectDetection:
             elif self.model_name == "yolov8":
                 results = self.model.detect_objects(image_path)
                 self.model.visualize_results(results)
+	    elif self.model_name == "yolov5":
+                results, img_bgr = self.model.detect_objects(image_path)
+                self.model.visualize_results(results, img_bgr)
             elif self.model_name == "detectron2":
                 outputs = self.model.detect_objects(image_path)
                 self.model.visualize_results(outputs)
