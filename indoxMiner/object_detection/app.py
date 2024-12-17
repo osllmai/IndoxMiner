@@ -10,6 +10,7 @@ from object_detection.models.YOLOv8.yolov8_model import YOLOv8Model
 from object_detection.models.Detectron2.detectron2_model import Detectron2Model
 from object_detection.models.SAM2.sam2_model import SAM2Model
 from object_detection.models.YOLOv5.yolov5_model import YOLOv5Model
+from object_detection.models.YOLOv6.yolov6_model import YOLOv6Model
 from object_detection.models.YOLOv11.yolov11_model import YOLOv11Model
 from object_detection.models.YOLOv10.yolov10_model import YOLOv10Model
 
@@ -44,6 +45,8 @@ class IndoxObjectDetection:
             self.model = YOLOv8Model(model_path=kwargs.get("model_path", "yolov8n.pt"))
         elif self.model_name == "yolov5":
             self.model = YOLOv5Model(model_name=kwargs.get("model_name", "yolov5s"), device=device)
+        elif self.model_name == "yolov6":
+            self.model = YOLOv6Model(device=device)
         elif self.model_name == "yolov11":
             self.model = YOLOv11Model(model_path=kwargs.get("model_path", "yolo11n.pt"), device=device)
         elif self.model_name == "yolov10":
@@ -104,7 +107,8 @@ class IndoxObjectDetection:
         """
         print(f"Running model: {self.model_name} on image: {image_path}")
         try:
-            if self.model_name in ["kosmos2", "rtdetr", "llava", "groundingdino", "yolox", "owlvit", "yolov8", "yolov5", "yolov11", "yolov10", "detectron2", "detr", "detrclip", "sam2"]:
+            if self.model_name in ["kosmos2", "rtdetr", "llava", "groundingdino", "yolox", "owlvit", "yolov8", 
+                                  "yolov5", "yolov6", "yolov11", "yolov10", "detectron2", "detr", "detrclip", "sam2"]:
                 self._run_model(image_path, **kwargs)
             else:
                 raise ValueError("Invalid model selected.")
@@ -141,6 +145,9 @@ class IndoxObjectDetection:
         elif self.model_name == "yolov5":
             results, img_bgr = self.model.detect_objects(image_path)
             self.model.visualize_results(results, img_bgr)
+        elif self.model_name == "yolov6":
+                output_path = self.model.detect_objects(image_path, threshold=kwargs.get("threshold", 0.25))
+                self.model.visualize_results(output_path)
         elif self.model_name == "yolov11":
             result_image_path = self.model.detect_objects(image_path, conf_threshold=kwargs.get("conf_threshold", 0.25))
             self.model.visualize_results(result_image_path)
@@ -161,3 +168,4 @@ class IndoxObjectDetection:
         elif self.model_name == "sam2":
             image_bgr, detections = self.model.detect_objects(image_path)
             self.model.visualize_results(image_bgr, detections)
+
